@@ -250,10 +250,10 @@ class Scanner:
     #
     def __init__(self, src):
         self.source = src + '@'
-        self.rxNumber = re.compile(r'[0-9]+(\.[0-9]+)?')
-        self.rxIdent = re.compile(r'[a-zA-Z][a-zA-Z0-9]*')
-        self.rxRelOps = re.compile(r'<>|<=|>=|=|>|<')
-        self.rxSymbols = re.compile(r'[\n\(\),]')
+        self.rxNumber = re.compile(r'^[0-9]+(\.[0-9]+)?')
+        self.rxIdent = re.compile(r'^[a-zA-Z][a-zA-Z0-9]*')
+        self.rxRelOps = re.compile(r'^<>|<=|>=|=|>|<')
+        self.rxSymbols = re.compile(r'^[\n\(\),]')
         
     #
     def scan(self):
