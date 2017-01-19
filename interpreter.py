@@ -1,7 +1,8 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 
-from enum import Enum
+import enum
+import re
 
 #
 # Հայտարարված ու սահմանված ենթածրագրերի ցուցակ
@@ -168,9 +169,9 @@ class Branch:
 # Թոքեններ
 #
 class Token(Enum):
-    xNull = 0
+    xNull   = 0
     xNumber = 1
-    xIdent = 2
+    xIdent  = 2
     # թվաբանություն
     xAdd = 20
     xSub = 21
@@ -185,41 +186,85 @@ class Token(Enum):
     xLe = 29
     # տրամաբանական
     xAnd = 30
-    xOr = 31
+    xOr  = 31
     xNot = 32
     # ծառայողական նիշեր
-    xLPar = 37
-    xRPar = 38
-    xComma = 39
+    xLPar  = 36
+    xRPar  = 37
+    xComma = 38
+    xEol   = 39
     # ծառայողական բառեր
-    xDeclare = 40
+    xDeclare  = 40
     xFunction = 41
-    xEnd = 42
-    xPrint = 43
-    xInput = 44
-    xLet = 45
-    xIf = 46
-    xThen = 47
-    xElseIf = 48
-    xElse = 49
-    xWhile = 50
-    xFor = 51
-    xTo = 52
-    xStep = 53    
+    xEnd      = 42
+    xPrint    = 43
+    xInput    = 44
+    xLet      = 45
+    xIf       = 46
+    xThen     = 47
+    xElseIf   = 48
+    xElse     = 49
+    xWhile    = 50
+    xFor      = 51
+    xTo       = 52
+    xStep     = 53    
 
 #
 # Բառային վերլուծություն
 #
 class Scanner:
-    source = None
-    position = 0
+    # ծառայողական բառեր
+    keywords = {
+        'DECLARE'  : Token.xDeclare,
+        'FUNCTION' : Token.xFunction,
+        'END'      : Token.xEnd,
+        'PRINT'    : Token.xPrint,
+        'INPUT'    : Token.xInput,
+        'LET'      : Token.xLet,
+        'IF'       : Token.xIf,
+        'THEN'     : Token.xThen,
+        'ELSEIF'   : Token.xElseIf,
+        'ELSE'     : Token.xElse,
+        'WHILE'    : Token.xWhile,
+        'FOR'      : Token.xFor,
+        'TO'       : Token.xTo,
+        'STEP'     : Token.xStep,
+        'AND'      : Token.xAnd,
+        'OR'       : Token.xOr,
+        'NOT'      : Token.xNot
+    }
+    # գործողություններ
+    operations = {
+        '+'  : Token.xAdd,
+        '-'  : Token.xSub,
+        '*'  : Token.xMul,
+        '/'  : Token.xDiv,
+        '='  : Token.xEq,
+        '<>' : Token.xNe,
+        '>'  : Token.xGt,
+        '>=' : Token.xGe,
+        '<'  : Token.xLt,
+        '<=' : Token.xLe
+    }
 
+    #
     def __init__(self, src):
-        self.source = src
-        self.position = 0
-
+        self.source = src + '@'
+        self.rxNumber = re.compile(r'[0-9]+(\.[0-9]+)?')
+        self.rxIdent = re.compile(r'[a-zA-Z][a-zA-Z0-9]*')
+        self.rxRelOps = re.compile(r'<>|<=|>=|=|>|<')
+        self.rxSymbols = re.compile(r'[\n\(\),]')
+        
+    #
     def scan(self):
-        pass
+        # մաքրել բացատները
+        k = 0
+        while self.source[k] == ' ' or self.source[k] == '\t':
+            k += 1
+        if k != 0:
+            self.source = self.source[k:]
+
+        
 
 #
 # Շարահյուսական վերլուծություն
@@ -229,27 +274,32 @@ class Scanner:
 ## TEST
 ##
 if __name__ == '__main__':
-    env = dict()
+    # env = dict()
 
-    n0 = Number(3.14)
-    print(n0.evaluate(env))
+    # n0 = Number(3.14)
+    # print(n0.evaluate(env))
 
-    env['x'] = 1.234
-    v0 = Variable('x')
-    print(v0.evaluate(env))
+    # env['x'] = 1.234
+    # v0 = Variable('x')
+    # print(v0.evaluate(env))
 
-    u0 = Unary('-', Number(7))
-    print(u0.evaluate(env))
+    # u0 = Unary('-', Number(7))
+    # print(u0.evaluate(env))
 
-    env['y'] = 222
-    b0 = Binary('*', Number(2), Variable('y'))
-    print(b0.evaluate(env))
+    # env['y'] = 222
+    # b0 = Binary('*', Number(2), Variable('y'))
+    # print(b0.evaluate(env))
 
-    s0 = Procedure('f', ['x', 'y'])
-    s0.setBody(Binary('+', Variable('x'), Variable('y')))
-    subroutines['f'] = s0
-    print(s0)
-    print(env)
-    a0 = Apply('f', [Number(123), Number(456)])
-    print(a0.evaluate(env))
+    # s0 = Procedure('f', ['x', 'y'])
+    # s0.setBody(Binary('+', Variable('x'), Variable('y')))
+    # subroutines['f'] = s0
+    # print(s0)
+    # print(env)
+    # a0 = Apply('f', [Number(123), Number(456)])
+    # print(a0.evaluate(env))
+
+    scan = Scanner('FUNCTION')
+    print(scan.keywords)
+    print(scan.scan())
+
 
