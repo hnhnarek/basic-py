@@ -331,6 +331,7 @@ class Parser:
     #
     def parse(self):
         self.lookahead = next(self.scan)
+        self.parseEols()
         while True:
             if self.lookahead[1] == Token.xDeclare:
                 self.parseDeclare()
@@ -347,17 +348,36 @@ class Parser:
             raise 1
 
     #
+    def parseEols(self):
+        self.match(Token.xEol)
+        while self.lookahead[1] == Token.xEol:
+            next(self.scan)
+
+    #
     def parseHeader(self):
-        pass
+        self.match(Token.xFunction)
+        name = self.lookahead[0]
+        self.match(Token.xIdent)
+        self.match(Token.xLPar)
+        params = []
+        if self.lookahead[1] == Token.xIdent:
+            self.match(Token.xIdent)
+            while self.lookahead[1] == Token.xComma:
+                self.match(Token.xComma)
+                params.append(self.lookahead[0])
+                self.match(Token.xIdent)
+        self.match(Token.xRPar)
+        self.parseEols()
+        return Function(name, params)
 
     #
     def parseDeclare(self):
-        pass
+        self.match(Token.xDeclare)
+        return self.parseHeader()
 
     #
     def parseFunction(self):
         pass
-
 
 
 
