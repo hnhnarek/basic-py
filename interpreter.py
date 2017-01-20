@@ -13,10 +13,6 @@ subroutines = dict()
 # Ֆունկցիա կամ պրոցեդուրա
 #
 class Procedure:
-    name = None
-    parameters = []
-    body = None
-
     def __init__(self, nm, prs):
         self.name = nm
         self.parameters = prs
@@ -36,8 +32,6 @@ class Procedure:
 # Հաստատուն
 #
 class Number:
-    value = 0.0
-    
     def __init__(self, vl):
         self.value = vl
 
@@ -48,8 +42,6 @@ class Number:
 # Փոփոխական
 #
 class Variable:
-    name = None
-    
     def __init__(self, nm):
         self.name = nm
 
@@ -63,9 +55,6 @@ class Variable:
 # Ունար գործողություն
 #
 class Unary:
-    operation = None
-    subexpr = None
-    
     def __init__(self, op, ex):
         self.operation = op
         self.subexpr = ex
@@ -84,10 +73,6 @@ class Unary:
 # Բինար գործողություն
 #
 class Binary:
-    operation = None
-    subexpro = None
-    subexpri = None
-
     def __init__(self, op, exo, exi):
         self.operation = op
         self.subexpro = exo
@@ -116,9 +101,6 @@ class Binary:
 # Ֆունկցիայի կանչ
 #
 class Apply:
-    caleename = None
-    arguments = []
-
     def __init__(self, cl, ags):
         self.caleename = cl
         self.arguments = ags
@@ -133,11 +115,25 @@ class Apply:
         return calee.body.evaluate(envext)
 
 #
+# Վերագրում
+#
+class Assign:
+    def __init__(self, nm, ex):
+        self.varname = nm
+        self.subexpr = ex
+
+    def execute(self, env):
+        pass
+
+    def __str__(self):
+        nm = self.varname
+        ex = str(self.subexpr)
+        return 'LET {} = {}'.format(nm, ex)
+
+#
 # Արտածում
 #
 class Print:
-    subexpr = None
-    
     def __init__(self, ex):
         self.subexpr = ex
 
@@ -146,21 +142,77 @@ class Print:
         print(v0)
 
     def __str__(self):
-        return 'PRINT ' + str(self.subexpr)
+        so = str(self.subexpr)
+        return 'PRINT {}'.format(so)
+
+#
+# Ներմուծում
+#
+class Input:
+    def __init__(self, nm):
+        self.varname = ex
+
+    def execute(self, env):
+        pass
+
+    def __str__(self):
+        return 'INPUT {}'.format(self.varname)
 
 #
 # Պայման կամ ճյուղավորում
 #
 class Branch:
-    condition = None
-    #
-    #
-
-    def __init__(self, co, ac, de):
+    def __init__(self, co, de, al):
         self.condition = co
+        self.decision = de
+        self.alternative = al
 
     def execute(self, env):
         pass
+
+    def __str__(self):
+        pass
+
+#
+# Նախապայմանով ցիկլ
+#
+class WhileLoop:
+    def __init__(self, co, bo):
+        self.condition = co
+        self.body = bo
+
+    def execute(self, env):
+        pass
+
+    def __str__(self):
+        pass
+
+#
+# Պարամետրով ցիկլ
+#
+class ForLoop:
+    def __init__(self, pr, be, en, sp, bo):
+        self.parameter = pr
+        self.begin = be
+        self.end = en
+        self.step = sp
+        self.body = bo
+
+    def execute(self, env):
+        pass
+
+    def __str__(self):
+        pass
+
+#
+# Պրոցեդուրայի կանչ
+#
+class Call:
+    def __init__(self, cl, ags):
+        self.call = Apply(cl, ags)
+
+    def execute(self, env):
+        self.call.evaluate(env)
 
     def __str__(self):
         pass
@@ -207,7 +259,8 @@ class Token(enum.Enum):
     xWhile    = 50
     xFor      = 51
     xTo       = 52
-    xStep     = 53    
+    xStep     = 53
+    xCall     = 54
 
 #
 # Բառային վերլուծություն
@@ -229,6 +282,7 @@ class Scanner:
         'FOR'      : Token.xFor,
         'TO'       : Token.xTo,
         'STEP'     : Token.xStep,
+        'CALL'     : Token.xCall,
         'AND'      : Token.xAnd,
         'OR'       : Token.xOr,
         'NOT'      : Token.xNot
@@ -246,7 +300,7 @@ class Scanner:
         '<'  : Token.xLt,
         '<=' : Token.xLe
     }
-    #
+    # մետասիմվոլներ
     symbols = {
         '('  : Token.xLPar,
         ')'  : Token.xRPar,
@@ -275,7 +329,7 @@ class Scanner:
         if k != 0:
             self.source = self.source[k:]
 
-        # end of stream
+        # հոսքի վերջը
         if self.source[0] == '@':
             raise StopIteration()
 
@@ -318,9 +372,6 @@ class Scanner:
 # Շարահյուսական վերլուծություն
 #
 class Parser:
-    lookahead = None
-    scan = None
-    
     #
     def __init__(self, name):
         text = ''
@@ -328,21 +379,29 @@ class Parser:
             text = source.read()
         self.scan = Scanner(text)
 
+
+    # լեքսեմ
+    def L(self):
+        return self.lookahead[0]
+    # թոքենի ստուգում
+    def T(self, token):
+        return token == self.lookahead[1]
+
     #
     def parse(self):
         self.lookahead = next(self.scan)
         self.parseEols()
         while True:
-            if self.lookahead[1] == Token.xDeclare:
+            if self.T(Token.xDeclare):
                 self.parseDeclare()
-            elif self.lookahead[1] == Token.xFunction:
+            elif self.T(Token.xFunction):
                 self.parseFunction()
             else:
                 break
-
+    
     #
     def match(self, token):
-        if token == self.lookahead[1]:
+        if self.T(token):
             self.lookahead = next(self.scan)
         else:
             raise 1
@@ -350,21 +409,21 @@ class Parser:
     #
     def parseEols(self):
         self.match(Token.xEol)
-        while self.lookahead[1] == Token.xEol:
+        while self.T(Token.xEol):
             next(self.scan)
 
     #
     def parseHeader(self):
         self.match(Token.xFunction)
-        name = self.lookahead[0]
+        name = self.L()
         self.match(Token.xIdent)
-        self.match(Token.xLPar)
         params = []
-        if self.lookahead[1] == Token.xIdent:
+        self.match(Token.xLPar)
+        if self.T(Token.xIdent):
             self.match(Token.xIdent)
-            while self.lookahead[1] == Token.xComma:
+            while self.T(Token.xComma):
                 self.match(Token.xComma)
-                params.append(self.lookahead[0])
+                params.append(self.L())
                 self.match(Token.xIdent)
         self.match(Token.xRPar)
         self.parseEols()
@@ -377,7 +436,78 @@ class Parser:
 
     #
     def parseFunction(self):
-        pass
+        header = self.parseHeader()
+        self.parseStatement()
+        self.match(Token.xEnd)
+        self.match(Token.xFunction)
+
+    #
+    def parseStatement(self):
+        stats = []
+        while True:
+            if self.T(Token.xLet) or self.T(Token.xIdent):
+                stats.append(self.parseAssign())
+            elif self.T(Token.xPrint):
+                stats.append(self.parsePrint())
+            elif self.T(Token.xInput):
+                stats.append(self.parseInput())
+            elif self.T(Token.xIf):
+                stats.append(self.parseBranch())
+            elif self.T(Token.xWhile):
+                stats.append(self.parseWhile())
+            elif self.T(Token.xFor):
+                stats.append(self.parseFor())
+            elif self.T(Token.xCall):
+                stats.append(self.parseCall())
+            else:
+                break
+        return stats
+
+    #
+    def parseAssign(self):
+        if self.T(Token.xLet):
+            next(self.lookahead)
+        name = self.L()
+        self.match(Token.xIdent)
+        self.match(Token.xEq)
+        expr = self.parseDisjunction()
+        return Assign(name, expr)
+
+    #
+    def parsePrint(self):
+        self.match(Token.xPrint)
+        expr = self.parseDisjunction()
+        return Print(expr)
+
+    #
+    def parseInput(self):
+        self.match(Token.xInput)
+        name = self.L()
+        self.match(Token.xIdent)
+        return Input(name)
+
+    #
+    def parseBranch(self):
+        return None
+
+    #
+    def parseWhile(self):
+        self.match(Token.xWhile)
+        cond = self.parseDisjunction()
+        self.parseEols()
+        # TODO վերլուծել մարմին
+        self.match(Token.xEnd)
+        self.match(Token.xWhile)
+        return None
+
+    #
+    def parseFor(self):
+        return None
+
+    #
+    def parseCall(self):
+        return None
+
 
 
 
