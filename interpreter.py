@@ -3,6 +3,7 @@
 
 import enum
 import re
+import sys
 
 #
 # Հայտարարված ու սահմանված ենթածրագրերի ցուցակ
@@ -22,10 +23,12 @@ class Procedure:
         self.body = bo
 
     def __str__(self):
-        result = 'PROCEDURE ' + self.name
-        result += '(' + str(self.parameters) + ')\n'
-        result += str(self.body)
-        result += '\nEND'
+        result = 'FUNCTION ' + self.name
+        result += '(' + (', '.join(self.parameters)) + ')\n'
+        for stat in self.body:
+            result += str(stat)
+            result += '\n'
+        result += 'END'
         return result
 
 #
@@ -37,6 +40,9 @@ class Number:
 
     def evaluate(self, env):
         return self.value
+
+    def __str__(self):
+        return str(self.value)
 
 #
 # Փոփոխական
@@ -150,7 +156,7 @@ class Print:
 #
 class Input:
     def __init__(self, nm):
-        self.varname = ex
+        self.varname = nm
 
     def execute(self, env):
         pass
@@ -220,47 +226,49 @@ class Call:
 #
 # Թոքեններ
 #
-class Token(enum.Enum):
-    xNull   = 0
-    xNumber = 1
-    xIdent  = 2
+class Kind(enum.Enum):
+    Null   = 0
+    Eof    = 1
+    Number = 2
+    Ident  = 3
     # թվաբանություն
-    xAdd = 20
-    xSub = 21
-    xMul = 22
-    xDiv = 23
+    Add = 20
+    Sub = 21
+    Mul = 22
+    Div = 23
+    Pow = 24
     # համեմատություն
-    xEq = 24
-    xNe = 25
-    xGt = 26
-    xGe = 27
-    xLt = 28
-    xLe = 29
+    Eq = 25
+    Ne = 26
+    Gt = 27
+    Ge = 28
+    Lt = 29
+    Le = 30
     # տրամաբանական
-    xAnd = 30
-    xOr  = 31
-    xNot = 32
+    And = 33
+    Or  = 34
+    Not = 35
     # ծառայողական նիշեր
-    xLPar  = 36
-    xRPar  = 37
-    xComma = 38
-    xEol   = 39
+    LPar  = 36
+    RPar  = 37
+    Comma = 38
+    Eol   = 39
     # ծառայողական բառեր
-    xDeclare  = 40
-    xFunction = 41
-    xEnd      = 42
-    xPrint    = 43
-    xInput    = 44
-    xLet      = 45
-    xIf       = 46
-    xThen     = 47
-    xElseIf   = 48
-    xElse     = 49
-    xWhile    = 50
-    xFor      = 51
-    xTo       = 52
-    xStep     = 53
-    xCall     = 54
+    Declare  = 40
+    Function = 41
+    End      = 42
+    Print    = 43
+    Input    = 44
+    Let      = 45
+    If       = 46
+    Then     = 47
+    ElseIf   = 48
+    Else     = 49
+    While    = 50
+    For      = 51
+    To       = 52
+    Step     = 53
+    Call     = 54
 
 #
 # Բառային վերլուծություն
@@ -268,44 +276,44 @@ class Token(enum.Enum):
 class Scanner:
     # ծառայողական բառեր
     keywords = {
-        'DECLARE'  : Token.xDeclare,
-        'FUNCTION' : Token.xFunction,
-        'END'      : Token.xEnd,
-        'PRINT'    : Token.xPrint,
-        'INPUT'    : Token.xInput,
-        'LET'      : Token.xLet,
-        'IF'       : Token.xIf,
-        'THEN'     : Token.xThen,
-        'ELSEIF'   : Token.xElseIf,
-        'ELSE'     : Token.xElse,
-        'WHILE'    : Token.xWhile,
-        'FOR'      : Token.xFor,
-        'TO'       : Token.xTo,
-        'STEP'     : Token.xStep,
-        'CALL'     : Token.xCall,
-        'AND'      : Token.xAnd,
-        'OR'       : Token.xOr,
-        'NOT'      : Token.xNot
+        'DECLARE'  : Kind.Declare,
+        'FUNCTION' : Kind.Function,
+        'END'      : Kind.End,
+        'PRINT'    : Kind.Print,
+        'INPUT'    : Kind.Input,
+        'LET'      : Kind.Let,
+        'IF'       : Kind.If,
+        'THEN'     : Kind.Then,
+        'ELSEIF'   : Kind.ElseIf,
+        'ELSE'     : Kind.Else,
+        'WHILE'    : Kind.While,
+        'FOR'      : Kind.For,
+        'TO'       : Kind.To,
+        'STEP'     : Kind.Step,
+        'CALL'     : Kind.Call,
+        'AND'      : Kind.And,
+        'OR'       : Kind.Or,
+        'NOT'      : Kind.Not
     }
     # գործողություններ
     operations = {
-        '+'  : Token.xAdd,
-        '-'  : Token.xSub,
-        '*'  : Token.xMul,
-        '/'  : Token.xDiv,
-        '='  : Token.xEq,
-        '<>' : Token.xNe,
-        '>'  : Token.xGt,
-        '>=' : Token.xGe,
-        '<'  : Token.xLt,
-        '<=' : Token.xLe
+        '+'  : Kind.Add,
+        '-'  : Kind.Sub,
+        '*'  : Kind.Mul,
+        '/'  : Kind.Div,
+        '='  : Kind.Eq,
+        '<>' : Kind.Ne,
+        '>'  : Kind.Gt,
+        '>=' : Kind.Ge,
+        '<'  : Kind.Lt,
+        '<=' : Kind.Le
     }
     # մետասիմվոլներ
     symbols = {
-        '('  : Token.xLPar,
-        ')'  : Token.xRPar,
-        ','  : Token.xComma,
-        '\n' : Token.xEol
+        '('  : Kind.LPar,
+        ')'  : Kind.RPar,
+        ','  : Kind.Comma,
+        '\n' : Kind.Eol
     }
 
     #
@@ -331,14 +339,14 @@ class Scanner:
 
         # հոսքի վերջը
         if self.source[0] == '@':
-            raise StopIteration()
+            return ('EOF', Kind.Eof)
 
         # 
         meo = self.rxIdent.match(self.source)
         if meo:
             lexeme = meo.group(0)
             self.source = self.source[meo.end():]
-            token = self.keywords.get(lexeme, Token.xIdent)
+            token = self.keywords.get(lexeme, Kind.Ident)
             return (lexeme, token)
 
         #
@@ -346,7 +354,7 @@ class Scanner:
         if meo:
             lexeme = meo.group(0)
             self.source = self.source[meo.end():]
-            return (lexeme, Token.xNumber)
+            return (lexeme, Kind.Number)
 
         #
         meo = self.rxMathOps.match(self.source)
@@ -371,6 +379,10 @@ class Scanner:
 #
 # Շարահյուսական վերլուծություն
 #
+class SyntaxError(Exception):
+    def __init__(self, mes):
+        self.message = mes
+
 class Parser:
     #
     def __init__(self, name):
@@ -384,120 +396,138 @@ class Parser:
     def L(self):
         return self.lookahead[0]
     # թոքենի ստուգում
-    def T(self, token):
-        return token == self.lookahead[1]
+    def T(self, *tokens):
+        for tok in tokens:
+            if tok == self.lookahead[1]:
+                return True
+        return False
 
     #
     def parse(self):
         self.lookahead = next(self.scan)
-        self.parseEols()
+
+        while self.T(Kind.Eol):
+            self.eat()
+
+        program = []
         while True:
-            if self.T(Token.xDeclare):
-                self.parseDeclare()
-            elif self.T(Token.xFunction):
-                self.parseFunction()
+            if self.T(Kind.Declare):
+                subr = self.parseDeclare()
+            elif self.T(Kind.Function):
+                subr = self.parseFunction()
             else:
                 break
+            program.append(subr)
+
+        return program
     
     #
+    def eat(self):
+        self.lookahead = next(self.scan)
     def match(self, token):
         if self.T(token):
-            self.lookahead = next(self.scan)
+            self.eat()
         else:
-            raise 1
+            mes = 'Expected {}, but got {}'.format(token, self.lookahead)
+            raise SyntaxError(mes)
 
     #
     def parseEols(self):
-        self.match(Token.xEol)
-        while self.T(Token.xEol):
-            next(self.scan)
+        self.match(Kind.Eol)
+        while self.T(Kind.Eol):
+            self.eat()
 
     #
     def parseHeader(self):
-        self.match(Token.xFunction)
+        self.match(Kind.Function)
         name = self.L()
-        self.match(Token.xIdent)
+        self.match(Kind.Ident)
         params = []
-        self.match(Token.xLPar)
-        if self.T(Token.xIdent):
-            self.match(Token.xIdent)
-            while self.T(Token.xComma):
-                self.match(Token.xComma)
+        self.match(Kind.LPar)
+        if self.T(Kind.Ident):
+            params.append(self.L())
+            self.match(Kind.Ident)
+            while self.T(Kind.Comma):
+                self.match(Kind.Comma)
                 params.append(self.L())
-                self.match(Token.xIdent)
-        self.match(Token.xRPar)
+                self.match(Kind.Ident)
+        self.match(Kind.RPar)
         self.parseEols()
-        return Function(name, params)
+        return Procedure(name, params)
 
     #
     def parseDeclare(self):
-        self.match(Token.xDeclare)
+        self.match(Kind.Declare)
         return self.parseHeader()
 
     #
     def parseFunction(self):
-        header = self.parseHeader()
-        self.parseStatement()
-        self.match(Token.xEnd)
-        self.match(Token.xFunction)
+        subr = self.parseHeader()
+        body = self.parseStatements()
+        subr.setBody(body)
+        self.match(Kind.End)
+        self.match(Kind.Function)
+        return subr
 
     #
-    def parseStatement(self):
+    def parseStatements(self):
         stats = []
         while True:
-            if self.T(Token.xLet) or self.T(Token.xIdent):
+            if self.T(Kind.Let) or self.T(Kind.Ident):
                 stats.append(self.parseAssign())
-            elif self.T(Token.xPrint):
+            elif self.T(Kind.Print):
                 stats.append(self.parsePrint())
-            elif self.T(Token.xInput):
+            elif self.T(Kind.Input):
                 stats.append(self.parseInput())
-            elif self.T(Token.xIf):
+            elif self.T(Kind.If):
                 stats.append(self.parseBranch())
-            elif self.T(Token.xWhile):
+            elif self.T(Kind.While):
                 stats.append(self.parseWhile())
-            elif self.T(Token.xFor):
+            elif self.T(Kind.For):
                 stats.append(self.parseFor())
-            elif self.T(Token.xCall):
+            elif self.T(Kind.Call):
                 stats.append(self.parseCall())
             else:
                 break
+            self.parseEols()
         return stats
 
     #
     def parseAssign(self):
-        if self.T(Token.xLet):
-            next(self.lookahead)
+        if self.T(Kind.Let):
+            self.eat()
         name = self.L()
-        self.match(Token.xIdent)
-        self.match(Token.xEq)
+        self.match(Kind.Ident)
+        self.match(Kind.Eq)
         expr = self.parseDisjunction()
         return Assign(name, expr)
 
     #
     def parsePrint(self):
-        self.match(Token.xPrint)
+        self.match(Kind.Print)
         expr = self.parseDisjunction()
         return Print(expr)
 
     #
     def parseInput(self):
-        self.match(Token.xInput)
+        self.match(Kind.Input)
         name = self.L()
-        self.match(Token.xIdent)
+        self.match(Kind.Ident)
         return Input(name)
 
     #
     def parseBranch(self):
+        self.match(Kind.If)
         return None
 
     #
     def parseWhile(self):
-        self.match(Token.xWhile)
+        self.match(Kind.While)
         cond = self.parseDisjunction()
         self.parseEols()
-        # TODO վերլուծել մարմին
-        self.match(Token.xEnd)
-        self.match(Token.xWhile)
+        bdy = self.parseStatements()
+        self.match(Kind.End)
+        self.match(Kind.While)
         return None
 
     #
@@ -506,6 +536,131 @@ class Parser:
 
     #
     def parseCall(self):
+        self.match(Kind.Call)
+        name = self.L()
+        self.match(Kind.Ident)
+        
+        argus = []
+        if self.T(Kind.Number, Kind.Ident, Kind.Sub, Kind.Not, Kind.LPar):
+            exi = self.parseDisjunction()
+            argus.append(exi)
+            while self.T(Kind.Comma):
+                self.match(Kind.Comma)
+                exi = self.parseDisjunction()
+                argus.append(exi)
+
+        return Call(name, argus)
+
+    #
+    def parseDisjunction(self):
+        exo = self.parseConjunction()
+        while self.T(Kind.Or):
+            oper = self.L()
+            self.eat()
+            exi = self.parseConjunction()
+            exo = Binary('OR', exo, exi)
+        return exo
+
+    #
+    def parseConjunction(self):
+        exo = self.parseEquality()
+        while self.T(Kind.And):
+            oper = self.L()
+            self.eat()
+            exi = self.parseEquality()
+            exo = Binary('AND', exo, exi)
+        return exo
+
+    #
+    def parseEquality(self):
+        exo = self.parseComparison()
+        while self.T(Kind.Eq, Kind.Ne):
+            oper = self.L()
+            self.eat()
+            exi = self.parseComparison()
+            exo = Binary(oper, exo, exi)
+        return exo
+
+    #
+    def parseComparison(self):
+        exo = self.parseAddition()
+        while self.T(Kind.Gt, Kind.Ge, Kind.Lt, Kind.Le):
+            oper = self.L()
+            self.eat()
+            exi = self.parseAddition()
+            exo = Binary(oper, exo, exi)
+        return exo
+
+    #
+    def parseAddition(self):
+        exo = self.parseMultiplication()
+        while self.T(Kind.Add, Kind.Sub):
+            oper = self.L()
+            self.eat()
+            exi = self.parseMultiplication()
+            exo = Binary(oper, exo, exi)
+        return exo
+
+    #
+    def parseMultiplication(self):
+        exo = self.parsePower()
+        while self.T(Kind.Mul, Kind.Div):
+            oper = self.L()
+            self.eat()
+            exi = self.parsePower()
+            exo = Binary(oper, exo, exi)
+        return exo
+
+    #
+    def parsePower(self):
+        exo = self.parseFactor()
+        if self.T(Kind.Pow):
+            self.eat()
+            exi = self.parsePower()
+            exo = Binary('^', exo, exi)
+        return exo
+
+    #
+    def parseFactor(self):
+        #
+        if self.T(Kind.Number):
+            value = float(self.L())
+            self.match(Kind.Number)
+            return Number(value)
+
+        #
+        if self.T(Kind.Ident):
+            name = self.L()
+            self.match(Kind.Ident)
+            if self.T(Kind.LPar):
+                argus = []
+                self.match(Kind.LPar)
+                if self.T(Kind.Number, Kind.Ident, Kind.Sub, Kind.Not, Kind.LPar):
+                    exi = self.parseDisjunction()
+                    argus.append(exi)
+                    while self.T(Kind.Comma):
+                        self.match(Kind.Comma)
+                        exi = self.parseDisjunction()
+                        argus.append(exi)
+                self.match(Kind.RPar)
+                return Apply(name, argus)
+            else:
+                return Variable(name)
+
+        #
+        if self.T(Kind.Sub, Kind.Not):
+            oper = self.L()
+            self.eat()
+            suex = self.parseFactor()
+            return Unary(oper, suex)
+
+        #
+        if self.T(Kind.LPar):
+            self.match(Kind.LPar)
+            suex = self.parseDisjunction()
+            self.match(Kind.RPar)
+            return suex
+
         return None
 
 
@@ -515,6 +670,15 @@ class Parser:
 ## TEST
 ##
 if __name__ == '__main__':
+    parser = Parser('C:/Projects/basic-py/case04.bas')
+    prog = parser.parse()
+    for pr in prog:
+        print(str(pr))
+
+
+#exit(0)
+    
+#if __name__ == '__main__':
     # env = dict()
 
     # n0 = Number(3.14)
@@ -539,18 +703,18 @@ if __name__ == '__main__':
     # a0 = Apply('f', [Number(123), Number(456)])
     # print(a0.evaluate(env))
 
-    text0 = '''FUNCTION fact(n)
-                IF n = 1 THEN
-                    fact = 1
-                ELSE
-                    fact = n * fact(n - 1)
-                END IF
-            END FUNCTION'''
+    # text0 = '''FUNCTION fact(n)
+    #             IF n = 1 THEN
+    #                 fact = 1
+    #             ELSE
+    #                 fact = n * fact(n - 1)
+    #             END IF
+    #         END FUNCTION'''
 
-    scan = Scanner(text0)
+    # scan = Scanner(text0)
     #for i in range(0, 35):
     #    print(scan.scan())
-    for kv in scan:
-        print(kv)
+    #for kv in scan:
+    #    print(kv)
 
 

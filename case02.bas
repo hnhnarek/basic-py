@@ -1,0 +1,3 @@
+FUNCTION ex0(a)
+  PRINT a
+END FUNCTION
