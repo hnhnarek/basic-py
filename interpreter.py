@@ -762,8 +762,20 @@ class Parser:
         return None
 
 
-
-
+##
+## Unit tests
+##
+# import unittest
+#
+#class TestNumber(unittest.TestCase):
+#    def testValue(self):
+#        nm = Number(3.14)
+#       self.assertEqual(nm.value, 3.14)
+#    
+#
+#if __name__ == '__main__':
+#    unittest.main()
+    
 ##
 ## TEST
 ##
