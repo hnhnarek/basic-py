@@ -1,0 +1,7 @@
+
+FUNCTION ex3(n)
+  FOR i = 1 TO n + 3 STEP -1
+    PRINT i
+    PRINT i * 2
+  END FOR
+END FUNCTION

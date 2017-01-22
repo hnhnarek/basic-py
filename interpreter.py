@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 
 import enum
+import functools
 import re
 import sys
 
@@ -73,7 +74,7 @@ class Unary:
 
     def __str__(self):
         s0 = str(self.subexpr)
-        return '(' + self.operation + s0 + ')'
+        return '({} {})'.format(self.operation, s0)
 
 #
 # Բինար գործողություն
@@ -101,7 +102,7 @@ class Binary:
     def __str__(self):
         s0 = str(self.subexpro)
         s1 = str(self.subexpri)
-        return '(' + s0 + ' ' + self.operation + ' ' + s1 + ')'
+        return '({} {} {})'.format(s0, self.operation, s1)
 
 #
 # Ֆունկցիայի կանչ
@@ -119,6 +120,9 @@ class Apply:
         for k,v in zip(calee.parameters, self.arguments):
             envext[k] = v.evaluate(env)
         return calee.body.evaluate(envext)
+
+    def __str__(self):
+        return None
 
 #
 # Վերագրում
@@ -208,7 +212,14 @@ class ForLoop:
         pass
 
     def __str__(self):
-        pass
+        result = 'FOR ' + str(self.parameter)
+        result += ' = ' + str(self.begin)
+        result += ' TO ' + str(self.end)
+        result += ' STEP ' + str(self.step) + '\n'
+        for se in self.body:
+            result += str(se) + '\n'
+        result += 'END FOR'
+        return result
 
 #
 # Պրոցեդուրայի կանչ
@@ -528,11 +539,34 @@ class Parser:
         bdy = self.parseStatements()
         self.match(Kind.End)
         self.match(Kind.While)
-        return None
+        return WhileLoop(cond, bdy)
 
     #
     def parseFor(self):
-        return None
+        ''' Statement = FOR IDENT '=' E TO E [STEP [(+|-)]E] Eols Statements END FOR'''
+        self.match(Kind.For)
+        param = self.L()
+        self.match(Kind.Ident)
+        self.match(Kind.Eq)
+        begin = self.parseAddition()
+        self.match(Kind.To)
+        end = self.parseAddition()
+        step = Number(1)
+        if self.T(Kind.Step):
+            self.match(Kind.Step)
+            sign = '+'
+            if self.T(Kind.Add, Kind.Sub):
+                sign = self.L()
+                self.eat()
+            spv = self.L()
+            self.match(Kind.Number)
+            exo = Number(spv)
+            step = Unary('-', spv) if sign == '-' else exo
+        self.parseEols()
+        body = self.parseStatements()
+        self.match(Kind.End)
+        self.match(Kind.For)
+        return ForLoop(param, begin, end, step, body)
 
     #
     def parseCall(self):
@@ -670,51 +704,9 @@ class Parser:
 ## TEST
 ##
 if __name__ == '__main__':
-    parser = Parser('C:/Projects/basic-py/case04.bas')
+    parser = Parser('C:/Projects/basic-py/case05.bas')
     prog = parser.parse()
     for pr in prog:
         print(str(pr))
-
-
-#exit(0)
-    
-#if __name__ == '__main__':
-    # env = dict()
-
-    # n0 = Number(3.14)
-    # print(n0.evaluate(env))
-
-    # env['x'] = 1.234
-    # v0 = Variable('x')
-    # print(v0.evaluate(env))
-
-    # u0 = Unary('-', Number(7))
-    # print(u0.evaluate(env))
-
-    # env['y'] = 222
-    # b0 = Binary('*', Number(2), Variable('y'))
-    # print(b0.evaluate(env))
-
-    # s0 = Procedure('f', ['x', 'y'])
-    # s0.setBody(Binary('+', Variable('x'), Variable('y')))
-    # subroutines['f'] = s0
-    # print(s0)
-    # print(env)
-    # a0 = Apply('f', [Number(123), Number(456)])
-    # print(a0.evaluate(env))
-
-    # text0 = '''FUNCTION fact(n)
-    #             IF n = 1 THEN
-    #                 fact = 1
-    #             ELSE
-    #                 fact = n * fact(n - 1)
-    #             END IF
-    #         END FUNCTION'''
-
-    # scan = Scanner(text0)
-    #for i in range(0, 35):
-    #    print(scan.scan())
-    #for kv in scan:
-    #    print(kv)
 
 
