@@ -29,7 +29,7 @@ class Procedure:
         for stat in self.body:
             result += str(stat)
             result += '\n'
-        result += 'END'
+        result += 'END FUNCTION'
         return result
 
 #
@@ -172,16 +172,30 @@ class Input:
 # Պայման կամ ճյուղավորում
 #
 class Branch:
-    def __init__(self, co, de, al):
+    def __init__(self, co, de):
         self.condition = co
         self.decision = de
+        self.alternative = None
+
+    def setElse(self, al):
         self.alternative = al
 
     def execute(self, env):
         pass
 
     def __str__(self):
-        pass
+        result = 'IF ' + str(self.condition) + ' THEN\n'
+        for se in self.decision:
+            result += str(se) + '\n'
+        elp = self.alternative
+        while type(elp) == Branch:
+            result += 'ELSEIF ' + str(elp.condition) + ' THEN\n'
+            for se in elp.decision:
+                result += str(se) + '\n'
+            elp = elp.alternative
+        # TODO process 'else'
+        result += 'END IF'
+        return result
 
 #
 # Նախապայմանով ցիկլ
@@ -195,7 +209,11 @@ class WhileLoop:
         pass
 
     def __str__(self):
-        pass
+        result = 'WHILE ' + str(self.condition) + '\n'
+        for se in self.body:
+            result += str(se) + '\n'
+        result += 'END WHILE'
+        return result
 
 #
 # Պարամետրով ցիկլ
@@ -232,7 +250,9 @@ class Call:
         self.call.evaluate(env)
 
     def __str__(self):
-        pass
+        result = 'CALL ' + self.call.calleename
+        result += ''
+        return result
 
 #
 # Թոքեններ
@@ -280,6 +300,7 @@ class Kind(enum.Enum):
     To       = 52
     Step     = 53
     Call     = 54
+
 
 #
 # Բառային վերլուծություն
@@ -330,6 +351,9 @@ class Scanner:
     #
     def __init__(self, src):
         self.source = src + '@'
+        self.line = 1
+
+        self.rxComment = re.compile(r'^\'.*')
         self.rxNumber = re.compile(r'^[0-9]+(\.[0-9]+)?')
         self.rxIdent = re.compile(r'^[a-zA-Z][a-zA-Z0-9]*')
         self.rxMathOps = re.compile(r'^<>|<=|>=|=|>|<|\+|\-|\*|/')
@@ -338,7 +362,13 @@ class Scanner:
     #
     def __iter__(self):
         return self
-    
+
+    #
+    def cutLexeme(self, ma):
+        lexeme = ma.group(0)
+        self.source = self.source[ma.end():]
+        return lexeme
+
     #
     def __next__(self):
         # մաքրել բացատները
@@ -350,38 +380,42 @@ class Scanner:
 
         # հոսքի վերջը
         if self.source[0] == '@':
-            return ('EOF', Kind.Eof)
+            return ('EOF', Kind.Eof, self.line)
 
+        # մեկնաբանություն
+        meo = self.rxComment.match(self.source)
+        if meo:
+            self.source = self.source[meo.end():]
+            return self.__next__()
+        
         # 
         meo = self.rxIdent.match(self.source)
         if meo:
-            lexeme = meo.group(0)
-            self.source = self.source[meo.end():]
+            lexeme = self.cutLexeme(meo)
             token = self.keywords.get(lexeme, Kind.Ident)
-            return (lexeme, token)
+            return (lexeme, token, self.line)
 
         #
         meo = self.rxNumber.match(self.source)
         if meo:
-            lexeme = meo.group(0)
-            self.source = self.source[meo.end():]
-            return (lexeme, Kind.Number)
+            lexeme = self.cutLexeme(meo)
+            return (lexeme, Kind.Number, self.line)
 
         #
         meo = self.rxMathOps.match(self.source)
         if meo:
-            lexeme = meo.group(0)
-            self.source = self.source[meo.end():]
+            lexeme = self.cutLexeme(meo)
             token = self.operations[lexeme]
-            return (lexeme, token)
+            return (lexeme, token, self.line)
 
         #
         meo = self.rxSymbols.match(self.source)
         if meo:
-            lexeme = meo.group(0)
-            self.source = self.source[meo.end():]
+            lexeme = self.cutLexeme(meo)
             token = self.symbols[lexeme]
-            return (lexeme, token)
+            if '\n' == lexeme:
+                self.line += 1
+            return (lexeme, token, self.line)
 
         return None
 
@@ -394,7 +428,13 @@ class SyntaxError(Exception):
     def __init__(self, mes):
         self.message = mes
 
+#
+#
 class Parser:
+    '''
+    Շարահյուսական վերլուծիչն իրականացված է 
+    '''
+
     #
     def __init__(self, name):
         text = ''
@@ -429,6 +469,8 @@ class Parser:
             else:
                 break
             program.append(subr)
+
+        # entryp = self.parseStatements()
 
         return program
     
@@ -529,7 +571,29 @@ class Parser:
     #
     def parseBranch(self):
         self.match(Kind.If)
-        return None
+        cond = self.parseDisjunction()
+        self.match(Kind.Then)
+        self.parseEols()
+        deci = self.parseStatements()
+        statbr = Branch(cond, deci)
+        bi = statbr
+        while self.T(Kind.ElseIf):
+            self.match(Kind.ElseIf)
+            coe = self.parseDisjunction()
+            self.match(Kind.Then)
+            self.parseEols()
+            ste = self.parseStatements()
+            bre = Branch(coe, ste)
+            bi.setElse(bre)
+            bi = bre
+        if self.T(Kind.Else):
+            self.match(Kind.Else)
+            self.parseEols()
+            bre = self.parseStatements()
+            bi.setElse(bre)
+        self.match(Kind.End)
+        self.match(Kind.If)
+        return statbr
 
     #
     def parseWhile(self):
@@ -704,7 +768,7 @@ class Parser:
 ## TEST
 ##
 if __name__ == '__main__':
-    parser = Parser('C:/Projects/basic-py/case05.bas')
+    parser = Parser('C:/Projects/basic-py/case07.bas')
     prog = parser.parse()
     for pr in prog:
         print(str(pr))
