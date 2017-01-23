@@ -1,3 +1,6 @@
 FUNCTION ex0(a)
   PRINT a
 END FUNCTION
+
+CALL ex0 5
+

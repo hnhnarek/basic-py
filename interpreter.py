@@ -3,6 +3,7 @@
 
 import enum
 import functools
+import math
 import re
 import sys
 
@@ -15,22 +16,10 @@ subroutines = dict()
 # Ֆունկցիա կամ պրոցեդուրա
 #
 class Procedure:
-    def __init__(self, nm, prs):
+    def __init__(self, nm, prs, bo):
         self.name = nm
         self.parameters = prs
-        self.body = None
-
-    def setBody(self, bo):
         self.body = bo
-
-    def __str__(self):
-        result = 'FUNCTION ' + self.name
-        result += '(' + (', '.join(self.parameters)) + ')\n'
-        for stat in self.body:
-            result += str(stat)
-            result += '\n'
-        result += 'END FUNCTION'
-        return result
 
 #
 # Հաստատուն
@@ -42,9 +31,6 @@ class Number:
     def evaluate(self, env):
         return self.value
 
-    def __str__(self):
-        return str(self.value)
-
 #
 # Փոփոխական
 #
@@ -54,9 +40,6 @@ class Variable:
 
     def evaluate(self, env):
         return env[self.name]
-
-    def __str__(self):
-        return self.name
 
 #
 # Ունար գործողություն
@@ -71,10 +54,6 @@ class Unary:
         if self.operation == '-':
             return -ro
         return ro
-
-    def __str__(self):
-        s0 = str(self.subexpr)
-        return '({} {})'.format(self.operation, s0)
 
 #
 # Բինար գործողություն
@@ -97,32 +76,53 @@ class Binary:
         if self.operation == '/':
             # ստուգել 0֊ի վրա բաժանելը
             return ro / ri
+        if self.operation == '=':
+            return ro == ri
+        if self.operation == '<>':
+            return ro != ri
+        if self.operation == '>':
+            return ro > ri
+        if self.operation == '>=':
+            return ro >= ri
+        if self.operation == '<':
+            return ro < ri
+        if self.operation == '<=':
+            return ro <= ri
+        if self.operation == 'AND':
+            return ro and ri
+        if self.operation == 'OR':
+            return ro or ri
         return 0.0
-
-    def __str__(self):
-        s0 = str(self.subexpro)
-        s1 = str(self.subexpri)
-        return '({} {} {})'.format(s0, self.operation, s1)
 
 #
 # Ֆունկցիայի կանչ
 #
 class Apply:
+    builtins = {
+        'SQR' : math.sqrt
+    }
+    
     def __init__(self, cl, ags):
-        self.caleename = cl
+        self.calleename = cl
         self.arguments = ags
 
     def evaluate(self, env):
-        # ստուգել caleename֊ի գոյությունը subroutines֊ում
-        calee = subroutines[self.caleename]
-        # ստուգել len(calee.parametrs) == len(self.arguments)
-        envext = dict(env)
-        for k,v in zip(calee.parameters, self.arguments):
-            envext[k] = v.evaluate(env)
-        return calee.body.evaluate(envext)
+        # builtins
+        if self.calleename in self.builtins:
+            agv = self.arguments[0].evaluate(env)
+            return self.builtins[self.calleename](agv)
 
-    def __str__(self):
-        return None
+        # ստուգել caleename֊ի գոյությունը subroutines֊ում
+        callee = subroutines[self.calleename]
+        # ստուգել len(callee.parametrs) == len(self.arguments)
+        envext = dict(env)
+        envext[self.calleename] = 0
+        for k,v in zip(callee.parameters, self.arguments):
+            envext[k] = v.evaluate(env)
+        #
+        callee.body.execute(envext)
+        #
+        return envext[self.calleename]
 
 #
 # Վերագրում
@@ -133,12 +133,8 @@ class Assign:
         self.subexpr = ex
 
     def execute(self, env):
-        pass
-
-    def __str__(self):
-        nm = self.varname
-        ex = str(self.subexpr)
-        return 'LET {} = {}'.format(nm, ex)
+        e0 = self.subexpr.evaluate(env)
+        env[self.varname] = e0
 
 #
 # Արտածում
@@ -151,10 +147,6 @@ class Print:
         v0 = self.subexpr.evaluate(env)
         print(v0)
 
-    def __str__(self):
-        so = str(self.subexpr)
-        return 'PRINT {}'.format(so)
-
 #
 # Ներմուծում
 #
@@ -163,10 +155,8 @@ class Input:
         self.varname = nm
 
     def execute(self, env):
-        pass
-
-    def __str__(self):
-        return 'INPUT {}'.format(self.varname)
+        text = input('? ')
+        env[self.varname] = float(text)
 
 #
 # Պայման կամ ճյուղավորում
@@ -181,21 +171,10 @@ class Branch:
         self.alternative = al
 
     def execute(self, env):
-        pass
-
-    def __str__(self):
-        result = 'IF ' + str(self.condition) + ' THEN\n'
-        for se in self.decision:
-            result += str(se) + '\n'
-        elp = self.alternative
-        while type(elp) == Branch:
-            result += 'ELSEIF ' + str(elp.condition) + ' THEN\n'
-            for se in elp.decision:
-                result += str(se) + '\n'
-            elp = elp.alternative
-        # TODO process 'else'
-        result += 'END IF'
-        return result
+        if self.condition.evaluate(env) != 0.0:
+            self.decision.execute(env)
+        else:
+            self.alternative.execute(env)
 
 #
 # Նախապայմանով ցիկլ
@@ -206,14 +185,8 @@ class WhileLoop:
         self.body = bo
 
     def execute(self, env):
-        pass
-
-    def __str__(self):
-        result = 'WHILE ' + str(self.condition) + '\n'
-        for se in self.body:
-            result += str(se) + '\n'
-        result += 'END WHILE'
-        return result
+        while self.condition.evaluate(env) != 0.0:
+            self.body.execute(env)
 
 #
 # Պարամետրով ցիկլ
@@ -227,17 +200,15 @@ class ForLoop:
         self.body = bo
 
     def execute(self, env):
-        pass
-
-    def __str__(self):
-        result = 'FOR ' + str(self.parameter)
-        result += ' = ' + str(self.begin)
-        result += ' TO ' + str(self.end)
-        result += ' STEP ' + str(self.step) + '\n'
-        for se in self.body:
-            result += str(se) + '\n'
-        result += 'END FOR'
-        return result
+        pr = self.parameter
+        be = self.begin.evaluate(env)
+        en = self.end.evaluate(env)
+        sp = self.step.evaluate(env)
+        
+        env[pr] = be
+        while env[pr] <= en if sp > 0 else env[pr] >= en:
+            self.body.execute(env)
+            env[pr] = env[pr] + sp
 
 #
 # Պրոցեդուրայի կանչ
@@ -249,10 +220,16 @@ class Call:
     def execute(self, env):
         self.call.evaluate(env)
 
-    def __str__(self):
-        result = 'CALL ' + self.call.calleename
-        result += ''
-        return result
+#
+# 
+#
+class Sequence:
+    def __init__(self, sl):
+        self.items = sl
+
+    def execute(self, env):
+        for se in self.items:
+            se.execute(env)
 
 #
 # Թոքեններ
@@ -285,7 +262,6 @@ class Kind(enum.Enum):
     Comma = 38
     Eol   = 39
     # ծառայողական բառեր
-    Declare  = 40
     Function = 41
     End      = 42
     Print    = 43
@@ -308,7 +284,6 @@ class Kind(enum.Enum):
 class Scanner:
     # ծառայողական բառեր
     keywords = {
-        'DECLARE'  : Kind.Declare,
         'FUNCTION' : Kind.Function,
         'END'      : Kind.End,
         'PRINT'    : Kind.Print,
@@ -432,7 +407,7 @@ class SyntaxError(Exception):
 #
 class Parser:
     '''
-    Շարահյուսական վերլուծիչն իրականացված է 
+    Շարահյուսական վերլուծիչն իրականացված
     '''
 
     #
@@ -444,10 +419,10 @@ class Parser:
 
 
     # լեքսեմ
-    def L(self):
+    def __L(self):
         return self.lookahead[0]
     # թոքենի ստուգում
-    def T(self, *tokens):
+    def __T(self, *tokens):
         for tok in tokens:
             if tok == self.lookahead[1]:
                 return True
@@ -457,193 +432,180 @@ class Parser:
     def parse(self):
         self.lookahead = next(self.scan)
 
-        while self.T(Kind.Eol):
-            self.eat()
+        while self.__T(Kind.Eol):
+            self.__eat()
 
-        program = []
-        while True:
-            if self.T(Kind.Declare):
-                subr = self.parseDeclare()
-            elif self.T(Kind.Function):
-                subr = self.parseFunction()
-            else:
-                break
-            program.append(subr)
+        #
+        while self.__T(Kind.Function):
+            subr = self.parseFunction()
+            subroutines[subr.name] = subr
 
-        # entryp = self.parseStatements()
+        #
+        stats = self.parseStatements()
+        entryf = Procedure('entry', [], stats)
+        subroutines['entry'] = entryf
 
-        return program
-    
     #
-    def eat(self):
+    def __eat(self):
         self.lookahead = next(self.scan)
-    def match(self, token):
-        if self.T(token):
-            self.eat()
+    def __match(self, token):
+        if self.__T(token):
+            self.__eat()
         else:
             mes = 'Expected {}, but got {}'.format(token, self.lookahead)
             raise SyntaxError(mes)
 
     #
-    def parseEols(self):
-        self.match(Kind.Eol)
-        while self.T(Kind.Eol):
-            self.eat()
-
-    #
-    def parseHeader(self):
-        self.match(Kind.Function)
-        name = self.L()
-        self.match(Kind.Ident)
-        params = []
-        self.match(Kind.LPar)
-        if self.T(Kind.Ident):
-            params.append(self.L())
-            self.match(Kind.Ident)
-            while self.T(Kind.Comma):
-                self.match(Kind.Comma)
-                params.append(self.L())
-                self.match(Kind.Ident)
-        self.match(Kind.RPar)
-        self.parseEols()
-        return Procedure(name, params)
-
-    #
-    def parseDeclare(self):
-        self.match(Kind.Declare)
-        return self.parseHeader()
+    def parseNewLines(self):
+        self.__match(Kind.Eol)
+        while self.__T(Kind.Eol):
+            self.__eat()
 
     #
     def parseFunction(self):
-        subr = self.parseHeader()
+        self.__match(Kind.Function)
+        name = self.__L()
+        self.__match(Kind.Ident)
+        params = []
+        self.__match(Kind.LPar)
+        if self.__T(Kind.Ident):
+            params.append(self.__L())
+            self.__match(Kind.Ident)
+            while self.__T(Kind.Comma):
+                self.__match(Kind.Comma)
+                params.append(self.__L())
+                self.__match(Kind.Ident)
+        self.__match(Kind.RPar)
+        self.parseNewLines()
         body = self.parseStatements()
-        subr.setBody(body)
-        self.match(Kind.End)
-        self.match(Kind.Function)
+        self.__match(Kind.End)
+        self.__match(Kind.Function)
+        self.parseNewLines()
+        subr = Procedure(name, params, body)
         return subr
 
     #
     def parseStatements(self):
         stats = []
         while True:
-            if self.T(Kind.Let) or self.T(Kind.Ident):
+            if self.__T(Kind.Let) or self.__T(Kind.Ident):
                 stats.append(self.parseAssign())
-            elif self.T(Kind.Print):
+            elif self.__T(Kind.Print):
                 stats.append(self.parsePrint())
-            elif self.T(Kind.Input):
+            elif self.__T(Kind.Input):
                 stats.append(self.parseInput())
-            elif self.T(Kind.If):
+            elif self.__T(Kind.If):
                 stats.append(self.parseBranch())
-            elif self.T(Kind.While):
+            elif self.__T(Kind.While):
                 stats.append(self.parseWhile())
-            elif self.T(Kind.For):
+            elif self.__T(Kind.For):
                 stats.append(self.parseFor())
-            elif self.T(Kind.Call):
+            elif self.__T(Kind.Call):
                 stats.append(self.parseCall())
             else:
                 break
-            self.parseEols()
-        return stats
+            self.parseNewLines()
+        return Sequence(stats)
 
     #
     def parseAssign(self):
-        if self.T(Kind.Let):
-            self.eat()
-        name = self.L()
-        self.match(Kind.Ident)
-        self.match(Kind.Eq)
+        if self.__T(Kind.Let):
+            self.__eat()
+        name = self.__L()
+        self.__match(Kind.Ident)
+        self.__match(Kind.Eq)
         expr = self.parseDisjunction()
         return Assign(name, expr)
 
     #
     def parsePrint(self):
-        self.match(Kind.Print)
+        self.__match(Kind.Print)
         expr = self.parseDisjunction()
         return Print(expr)
 
     #
     def parseInput(self):
-        self.match(Kind.Input)
-        name = self.L()
-        self.match(Kind.Ident)
+        self.__match(Kind.Input)
+        name = self.__L()
+        self.__match(Kind.Ident)
         return Input(name)
 
     #
     def parseBranch(self):
-        self.match(Kind.If)
+        self.__match(Kind.If)
         cond = self.parseDisjunction()
-        self.match(Kind.Then)
-        self.parseEols()
+        self.__match(Kind.Then)
+        self.parseNewLines()
         deci = self.parseStatements()
         statbr = Branch(cond, deci)
         bi = statbr
-        while self.T(Kind.ElseIf):
-            self.match(Kind.ElseIf)
+        while self.__T(Kind.ElseIf):
+            self.__match(Kind.ElseIf)
             coe = self.parseDisjunction()
-            self.match(Kind.Then)
-            self.parseEols()
+            self.__match(Kind.Then)
+            self.parseNewLines()
             ste = self.parseStatements()
             bre = Branch(coe, ste)
             bi.setElse(bre)
             bi = bre
-        if self.T(Kind.Else):
-            self.match(Kind.Else)
-            self.parseEols()
+        if self.__T(Kind.Else):
+            self.__match(Kind.Else)
+            self.parseNewLines()
             bre = self.parseStatements()
             bi.setElse(bre)
-        self.match(Kind.End)
-        self.match(Kind.If)
+        self.__match(Kind.End)
+        self.__match(Kind.If)
         return statbr
 
     #
     def parseWhile(self):
-        self.match(Kind.While)
+        self.__match(Kind.While)
         cond = self.parseDisjunction()
-        self.parseEols()
+        self.parseNewLines()
         bdy = self.parseStatements()
-        self.match(Kind.End)
-        self.match(Kind.While)
+        self.__match(Kind.End)
+        self.__match(Kind.While)
         return WhileLoop(cond, bdy)
 
     #
     def parseFor(self):
         ''' Statement = FOR IDENT '=' E TO E [STEP [(+|-)]E] Eols Statements END FOR'''
-        self.match(Kind.For)
-        param = self.L()
-        self.match(Kind.Ident)
-        self.match(Kind.Eq)
+        self.__match(Kind.For)
+        param = self.__L()
+        self.__match(Kind.Ident)
+        self.__match(Kind.Eq)
         begin = self.parseAddition()
-        self.match(Kind.To)
+        self.__match(Kind.To)
         end = self.parseAddition()
         step = Number(1)
-        if self.T(Kind.Step):
-            self.match(Kind.Step)
+        if self.__T(Kind.Step):
+            self.__match(Kind.Step)
             sign = '+'
-            if self.T(Kind.Add, Kind.Sub):
-                sign = self.L()
-                self.eat()
-            spv = self.L()
-            self.match(Kind.Number)
-            exo = Number(spv)
-            step = Unary('-', spv) if sign == '-' else exo
-        self.parseEols()
+            if self.__T(Kind.Add, Kind.Sub):
+                sign = self.__L()
+                self.__eat()
+            spv = self.__L()
+            self.__match(Kind.Number)
+            exo = Number(float(spv))
+            step = Unary('-', exo) if sign == '-' else exo
+        self.parseNewLines()
         body = self.parseStatements()
-        self.match(Kind.End)
-        self.match(Kind.For)
+        self.__match(Kind.End)
+        self.__match(Kind.For)
         return ForLoop(param, begin, end, step, body)
 
     #
     def parseCall(self):
-        self.match(Kind.Call)
-        name = self.L()
-        self.match(Kind.Ident)
+        self.__match(Kind.Call)
+        name = self.__L()
+        self.__match(Kind.Ident)
         
         argus = []
-        if self.T(Kind.Number, Kind.Ident, Kind.Sub, Kind.Not, Kind.LPar):
+        if self.__T(Kind.Number, Kind.Ident, Kind.Sub, Kind.Not, Kind.LPar):
             exi = self.parseDisjunction()
             argus.append(exi)
-            while self.T(Kind.Comma):
-                self.match(Kind.Comma)
+            while self.__T(Kind.Comma):
+                self.__match(Kind.Comma)
                 exi = self.parseDisjunction()
                 argus.append(exi)
 
@@ -652,9 +614,9 @@ class Parser:
     #
     def parseDisjunction(self):
         exo = self.parseConjunction()
-        while self.T(Kind.Or):
-            oper = self.L()
-            self.eat()
+        while self.__T(Kind.Or):
+            oper = self.__L()
+            self.__eat()
             exi = self.parseConjunction()
             exo = Binary('OR', exo, exi)
         return exo
@@ -662,9 +624,9 @@ class Parser:
     #
     def parseConjunction(self):
         exo = self.parseEquality()
-        while self.T(Kind.And):
-            oper = self.L()
-            self.eat()
+        while self.__T(Kind.And):
+            oper = self.__L()
+            self.__eat()
             exi = self.parseEquality()
             exo = Binary('AND', exo, exi)
         return exo
@@ -672,9 +634,9 @@ class Parser:
     #
     def parseEquality(self):
         exo = self.parseComparison()
-        while self.T(Kind.Eq, Kind.Ne):
-            oper = self.L()
-            self.eat()
+        while self.__T(Kind.Eq, Kind.Ne):
+            oper = self.__L()
+            self.__eat()
             exi = self.parseComparison()
             exo = Binary(oper, exo, exi)
         return exo
@@ -682,9 +644,9 @@ class Parser:
     #
     def parseComparison(self):
         exo = self.parseAddition()
-        while self.T(Kind.Gt, Kind.Ge, Kind.Lt, Kind.Le):
-            oper = self.L()
-            self.eat()
+        while self.__T(Kind.Gt, Kind.Ge, Kind.Lt, Kind.Le):
+            oper = self.__L()
+            self.__eat()
             exi = self.parseAddition()
             exo = Binary(oper, exo, exi)
         return exo
@@ -692,9 +654,9 @@ class Parser:
     #
     def parseAddition(self):
         exo = self.parseMultiplication()
-        while self.T(Kind.Add, Kind.Sub):
-            oper = self.L()
-            self.eat()
+        while self.__T(Kind.Add, Kind.Sub):
+            oper = self.__L()
+            self.__eat()
             exi = self.parseMultiplication()
             exo = Binary(oper, exo, exi)
         return exo
@@ -702,9 +664,9 @@ class Parser:
     #
     def parseMultiplication(self):
         exo = self.parsePower()
-        while self.T(Kind.Mul, Kind.Div):
-            oper = self.L()
-            self.eat()
+        while self.__T(Kind.Mul, Kind.Div):
+            oper = self.__L()
+            self.__eat()
             exi = self.parsePower()
             exo = Binary(oper, exo, exi)
         return exo
@@ -712,8 +674,8 @@ class Parser:
     #
     def parsePower(self):
         exo = self.parseFactor()
-        if self.T(Kind.Pow):
-            self.eat()
+        if self.__T(Kind.Pow):
+            self.__eat()
             exi = self.parsePower()
             exo = Binary('^', exo, exi)
         return exo
@@ -721,42 +683,42 @@ class Parser:
     #
     def parseFactor(self):
         #
-        if self.T(Kind.Number):
-            value = float(self.L())
-            self.match(Kind.Number)
+        if self.__T(Kind.Number):
+            value = float(self.__L())
+            self.__match(Kind.Number)
             return Number(value)
 
         #
-        if self.T(Kind.Ident):
-            name = self.L()
-            self.match(Kind.Ident)
-            if self.T(Kind.LPar):
+        if self.__T(Kind.Ident):
+            name = self.__L()
+            self.__match(Kind.Ident)
+            if self.__T(Kind.LPar):
                 argus = []
-                self.match(Kind.LPar)
-                if self.T(Kind.Number, Kind.Ident, Kind.Sub, Kind.Not, Kind.LPar):
+                self.__match(Kind.LPar)
+                if self.__T(Kind.Number, Kind.Ident, Kind.Sub, Kind.Not, Kind.LPar):
                     exi = self.parseDisjunction()
                     argus.append(exi)
-                    while self.T(Kind.Comma):
-                        self.match(Kind.Comma)
+                    while self.__T(Kind.Comma):
+                        self.__match(Kind.Comma)
                         exi = self.parseDisjunction()
                         argus.append(exi)
-                self.match(Kind.RPar)
+                self.__match(Kind.RPar)
                 return Apply(name, argus)
             else:
                 return Variable(name)
 
         #
-        if self.T(Kind.Sub, Kind.Not):
-            oper = self.L()
-            self.eat()
+        if self.__T(Kind.Sub, Kind.Not):
+            oper = self.__L()
+            self.__eat()
             suex = self.parseFactor()
             return Unary(oper, suex)
 
         #
-        if self.T(Kind.LPar):
-            self.match(Kind.LPar)
+        if self.__T(Kind.LPar):
+            self.__match(Kind.LPar)
             suex = self.parseDisjunction()
-            self.match(Kind.RPar)
+            self.__match(Kind.RPar)
             return suex
 
         return None
@@ -765,24 +727,61 @@ class Parser:
 ##
 ## Unit tests
 ##
-# import unittest
+#import unittest
 #
-#class TestNumber(unittest.TestCase):
-#    def testValue(self):
+#class TestExpression(unittest.TestCase):
+#    def testNumber(self):
 #        nm = Number(3.14)
-#       self.assertEqual(nm.value, 3.14)
-#    
+#        self.assertEqual(nm.value, 3.14)
 #
-#if __name__ == '__main__':
-#    unittest.main()
-    
+#    def testVariable(self):
+#        v0 = Variable('pi')
+#        v1 = Variable('g')
+#        e0 = {'pi':3.14, 'g':9.81}
+#        r0 = v0.evaluate(e0)
+#        self.assertEqual(r0, 3.14)
+#        r1 = v1.evaluate(e0)
+#        self.assertEqual(r1, 9.81)
+#
+#    def testUnary(self):
+#        n0 = Number(2)
+#        u0 = Unary('-', n0)
+#        r0 = u0.evaluate({})
+#        self.assertEqual(r0, -2)
+#        
+#    def testBinary(self):
+#        n0 = Number(3.14)
+#        v0 = Variable('r')
+#
+#        b0 = Binary('+', n0, v0)
+#        r0 = b0.evaluate({'r':2})
+#        self.assertTrue(r0 - 5.14 < 0.00001)
+#        
+#        b0 = Binary('-', n0, v0)
+#        r0 = b0.evaluate({'r':2})
+#        self.assertTrue(r0 - 1.14 < 0.00001)
+#
+#        b0 = Binary('*', n0, v0)
+#        r0 = b0.evaluate({'r':2})
+#        self.assertEqual(r0, 6.28)
+#
+#        b0 = Binary('/', n0, v0)
+#        r0 = b0.evaluate({'r':2})
+#        self.assertEqual(r0, 1.57)
+#
+#    def testApply(self):
+#        pass
+#   
+
+   
 ##
 ## TEST
 ##
 if __name__ == '__main__':
-    parser = Parser('C:/Projects/basic-py/case07.bas')
-    prog = parser.parse()
-    for pr in prog:
-        print(str(pr))
+    parser = Parser('C:/Projects/basic-py/case08.bas')
+    parser.parse()
+    main = Call('entry', [])
+    main.execute({})
+
 
 

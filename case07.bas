@@ -1,10 +1,9 @@
 
 ' asdad
-FUNCTION ex6(c)
+FUNCTION ex6(a)
   IF a = 1 THEN
     ' first
     PRINT a
-    PRINT c
   ELSEIF a = 2 THEN
     ' second
     ' third as
@@ -17,3 +16,9 @@ FUNCTION ex6(c)
     PRINT a * a
   END IF
 END FUNCTION
+
+CALL ex6 1
+CALL ex6 2
+CALL ex6 3
+CALL ex6 4
+CALL ex6 8

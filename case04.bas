@@ -11,4 +11,9 @@ FUNCTION ex2()
 
   f = a > b AND c <= d
   g = NOT (a < b OR c >= d)
+  
+  PRINT e
 END FUNCTION
+
+CALL ex2
+
