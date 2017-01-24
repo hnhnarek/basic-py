@@ -32,6 +32,16 @@ class Number:
         return self.value
 
 #
+#
+#
+class Text:
+    def __init__(self, bv):
+        self.value = bv
+
+    def evaluate(self, env):
+        return self.value
+
+#
 # Փոփոխական
 #
 class Variable:
@@ -238,7 +248,8 @@ class Kind(enum.Enum):
     Null   = 0
     Eof    = 1
     Number = 2
-    Ident  = 3
+    Text   = 3
+    Ident  = 4
     # թվաբանություն
     Add = 20
     Sub = 21
@@ -262,20 +273,20 @@ class Kind(enum.Enum):
     Comma = 38
     Eol   = 39
     # ծառայողական բառեր
-    Function = 41
-    End      = 42
-    Print    = 43
-    Input    = 44
-    Let      = 45
-    If       = 46
-    Then     = 47
-    ElseIf   = 48
-    Else     = 49
-    While    = 50
-    For      = 51
-    To       = 52
-    Step     = 53
-    Call     = 54
+    Function = 61
+    End      = 62
+    Print    = 63
+    Input    = 64
+    Let      = 65
+    If       = 66
+    Then     = 67
+    ElseIf   = 68
+    Else     = 69
+    While    = 70
+    For      = 71
+    To       = 72
+    Step     = 73
+    Call     = 74
 
 
 #
@@ -308,6 +319,7 @@ class Scanner:
         '-'  : Kind.Sub,
         '*'  : Kind.Mul,
         '/'  : Kind.Div,
+        '^'  : Kind.Pow,
         '='  : Kind.Eq,
         '<>' : Kind.Ne,
         '>'  : Kind.Gt,
@@ -330,8 +342,9 @@ class Scanner:
 
         self.rxComment = re.compile(r'^\'.*')
         self.rxNumber = re.compile(r'^[0-9]+(\.[0-9]+)?')
+        self.rxText = re.compile(r'"[^"]*"')
         self.rxIdent = re.compile(r'^[a-zA-Z][a-zA-Z0-9]*')
-        self.rxMathOps = re.compile(r'^<>|<=|>=|=|>|<|\+|\-|\*|/')
+        self.rxMathOps = re.compile(r'^<>|<=|>=|=|>|<|\+|\-|\*|/|\^')
         self.rxSymbols = re.compile(r'^[\n\(\),]')
 
     #
@@ -375,6 +388,12 @@ class Scanner:
         if meo:
             lexeme = self.cutLexeme(meo)
             return (lexeme, Kind.Number, self.line)
+
+        #
+        meo = self.rxText.match(self.source)
+        if meo:
+            lexeme = self.cutLexeme(meo)
+            return (lexeme, Kind.Text, self.line)
 
         #
         meo = self.rxMathOps.match(self.source)
@@ -430,20 +449,26 @@ class Parser:
 
     #
     def parse(self):
-        self.lookahead = next(self.scan)
+        try:
+            self.lookahead = next(self.scan)
+    
+            while self.__T(Kind.Eol):
+                self.__eat()
 
-        while self.__T(Kind.Eol):
-            self.__eat()
+            #
+            while self.__T(Kind.Function):
+                subr = self.parseFunction()
+                subroutines[subr.name] = subr
 
-        #
-        while self.__T(Kind.Function):
-            subr = self.parseFunction()
-            subroutines[subr.name] = subr
+            #
+            stats = self.parseStatements()
+            entryf = Procedure('entry', [], stats)
+            subroutines['entry'] = entryf
+        except SyntaxError as se:
+            print(se)
+            return False
 
-        #
-        stats = self.parseStatements()
-        entryf = Procedure('entry', [], stats)
-        subroutines['entry'] = entryf
+        return True
 
     #
     def __eat(self):
@@ -689,6 +714,12 @@ class Parser:
             return Number(value)
 
         #
+        if self.__T(Kind.Text):
+            value = self.__L()
+            self.__match(Kind.Text)
+            return Text(value.strip('"'))
+
+        #
         if self.__T(Kind.Ident):
             name = self.__L()
             self.__match(Kind.Ident)
@@ -778,10 +809,10 @@ class Parser:
 ## TEST
 ##
 if __name__ == '__main__':
-    parser = Parser('C:/Projects/basic-py/case08.bas')
-    parser.parse()
-    main = Call('entry', [])
-    main.execute({})
+    parser = Parser('C:/Projects/basic-py/case09.bas')
+    if parser.parse():
+        main = Call('entry', [])
+        main.execute({})
 
 
 
