@@ -4,6 +4,7 @@
 import enum
 import functools
 import math
+import operator
 import re
 import sys
 
@@ -69,6 +70,22 @@ class Unary:
 # Բինար գործողություն
 #
 class Binary:
+    __opdict = {
+        '+'   : operator.add,
+        '-'   : operator.sub,
+        '*'   : operator.mul,
+        '/'   : operator.truediv,
+        '^'   : operator.pow,
+        '='   : operator.eq,
+        '<>'  : operator.ne,
+        '>'   : operator.gt,
+        '>='  : operator.ge,
+        '<'   : operator.lt,
+        '<='  : operator.le,
+        'AND' : lambda a, b: a and b,
+        'OR'  : lambda a, b: a or b
+    }
+    
     def __init__(self, op, exo, exi):
         self.operation = op
         self.subexpro = exo
@@ -77,32 +94,15 @@ class Binary:
     def evaluate(self, env):
         ro = self.subexpro.evaluate(env)
         ri = self.subexpri.evaluate(env)
-        if self.operation == '+':
-            return ro + ri
-        if self.operation == '-':
-            return ro - ri
-        if self.operation == '*':
-            return ro * ri
-        if self.operation == '/':
-            # ստուգել 0֊ի վրա բաժանելը
-            return ro / ri
-        if self.operation == '=':
-            return ro == ri
-        if self.operation == '<>':
-            return ro != ri
-        if self.operation == '>':
-            return ro > ri
-        if self.operation == '>=':
-            return ro >= ri
-        if self.operation == '<':
-            return ro < ri
-        if self.operation == '<=':
-            return ro <= ri
-        if self.operation == 'AND':
-            return ro and ri
-        if self.operation == 'OR':
-            return ro or ri
-        return 0.0
+        opc = self.__opdict.get(self.operation)
+        return opc(ro, ri) if opc else 0.0
+
+#
+#
+#
+class RuntimeError:
+    def __init__(self, mes):
+        self.message = mes
 
 #
 # Ֆունկցիայի կանչ
@@ -123,15 +123,21 @@ class Apply:
             return self.builtins[self.calleename](agv)
 
         # ստուգել caleename֊ի գոյությունը subroutines֊ում
-        callee = subroutines[self.calleename]
+        callee = subroutines.get(self.calleename)
+        if not callee:
+            raise RuntimeError('')
+
         # ստուգել len(callee.parametrs) == len(self.arguments)
+        if len(self.arguments) != len(callee.parameters):
+            raise RuntimeError('')
+
         envext = dict(env)
         envext[self.calleename] = 0
         for k,v in zip(callee.parameters, self.arguments):
             envext[k] = v.evaluate(env)
-        #
+
         callee.body.execute(envext)
-        #
+
         return envext[self.calleename]
 
 #
@@ -219,6 +225,7 @@ class ForLoop:
         while env[pr] <= en if sp > 0 else env[pr] >= en:
             self.body.execute(env)
             env[pr] = env[pr] + sp
+        del env[pr]
 
 #
 # Պրոցեդուրայի կանչ
@@ -809,10 +816,12 @@ class Parser:
 ## TEST
 ##
 if __name__ == '__main__':
-    parser = Parser('C:/Projects/basic-py/case09.bas')
+    parser = Parser('C:/Projects/basic-py/tests/case09.bas')
     if parser.parse():
-        main = Call('entry', [])
-        main.execute({})
+        try:
+            Call('entry', []).execute({})
+        except RuntimeError as er:
+            print(er)
 
 
 
