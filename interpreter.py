@@ -114,9 +114,10 @@ class RuntimeError:
 #
 class Apply:
     builtins = {
-        'SQR' : math.sqrt
+        'SQR' : math.sqrt,
+        'LEN' : lambda e: len(e)
     }
-    
+
     def __init__(self, cl, ags):
         self.calleename = cl
         self.arguments = ags
@@ -209,10 +210,11 @@ class Branch:
         self.alternative = al
 
     def execute(self, env):
-        if self.condition.evaluate(env) != 0.0:
+        if self.condition.evaluate(env):
             self.decision.execute(env)
         else:
-            self.alternative.execute(env)
+            if self.alternative:
+                self.alternative.execute(env)
 
 #
 # Նախապայմանով ցիկլ
@@ -382,8 +384,6 @@ class Scanner:
         self.rxMathOps = re.compile(r'^<>|<=|>=|=|>|<|\+|\-|\*|/|\^')
         self.rxSymbols = re.compile(r'^[\n\(\)\[\],]')
 
-        self.symtab = None
-
     #
     def __iter__(self):
         return self
@@ -412,34 +412,34 @@ class Scanner:
         if meo:
             self.source = self.source[meo.end():]
             return self.__next__()
-        
-        # 
+
+        # իդենտիֆիկատոր կամ ծառայողական բառ
         meo = self.rxIdent.match(self.source)
         if meo:
             lexeme = self.cutLexeme(meo)
             token = self.keywords.get(lexeme, Kind.Ident)
             return (lexeme, token, self.line)
 
-        #
+        # իրական թիվ
         meo = self.rxNumber.match(self.source)
         if meo:
             lexeme = self.cutLexeme(meo)
             return (lexeme, Kind.Number, self.line)
 
-        #
+        # տեքստային լիտերալ
         meo = self.rxText.match(self.source)
         if meo:
             lexeme = self.cutLexeme(meo)
             return (lexeme, Kind.Text, self.line)
 
-        #
+        # գործողություններ
         meo = self.rxMathOps.match(self.source)
         if meo:
             lexeme = self.cutLexeme(meo)
             token = self.operations[lexeme]
             return (lexeme, token, self.line)
 
-        #
+        # մետասիմվոլներ
         meo = self.rxSymbols.match(self.source)
         if meo:
             lexeme = self.cutLexeme(meo)
@@ -450,7 +450,7 @@ class Scanner:
 
         return None
 
-        
+
 
 #
 # Շարահյուսական վերլուծություն
@@ -463,11 +463,19 @@ class SyntaxError(Exception):
 #
 class Parser:
     '''
-    Շարահյուսական վերլուծիչն իրականացված
+    Շարահյուսական վերլուծիչն իրականացված է ռեկուրսիվ վայրէջքի եղանակով։
+    Յուրաքանչյուր քերականական կանոնի համար նախատեսված է մեկ վերլուծող 
+    ֆունկցիա, որի մարմնում, օգտագործելով «առաջ նայելու» lookahead սիմվոլը,
+    կատարվում է տվյալ կանոնի վերլուծությունը։
     '''
 
     #
     def __init__(self, name):
+        '''
+        Parser դասի կոնստրուկտորն է, որը ստանում է վերլուծվող ֆայլի անունը,
+        կարդում է դրա պարունակությունը և ստեղծում է բառային վերլուծություն 
+        կատարող Scanner դասի նմուշը (scan)։
+        '''
         text = ''
         with open(name, 'r') as source:
             text = source.read()
@@ -492,12 +500,10 @@ class Parser:
             while self.__T(Kind.Eol):
                 self.__eat()
 
-            #
             while self.__T(Kind.Function):
                 subr = self.parseFunction()
                 subroutines[subr.name] = subr
 
-            #
             stats = self.parseStatements()
             entryf = Procedure('entry', [], stats)
             subroutines['entry'] = entryf
@@ -525,8 +531,6 @@ class Parser:
 
     #
     def parseFunction(self):
-        self.symtab = dict()
-
         self.__match(Kind.Function)
         name = self.__L()
         self.__match(Kind.Ident)
@@ -554,7 +558,7 @@ class Parser:
         while True:
             if self.__T(Kind.Dim):
                 stats.append(self.parseDim())
-            elif self.__T(Kind.Let) or self.__T(Kind.Ident):
+            elif self.__T(Kind.Let, Kind.Ident):
                 stats.append(self.parseAssign())
             elif self.__T(Kind.Print):
                 stats.append(self.parsePrint())
@@ -679,7 +683,7 @@ class Parser:
         self.__match(Kind.Call)
         name = self.__L()
         self.__match(Kind.Ident)
-        
+
         argus = []
         if self.__T(Kind.Number, Kind.Ident, Kind.Sub, Kind.Not, Kind.LPar):
             exi = self.parseDisjunction()
@@ -762,19 +766,16 @@ class Parser:
 
     #
     def parseFactor(self):
-        #
         if self.__T(Kind.Number):
             value = float(self.__L())
             self.__match(Kind.Number)
             return Number(value)
 
-        #
         if self.__T(Kind.Text):
             value = self.__L()
             self.__match(Kind.Text)
             return Text(value.strip('"'))
 
-        #
         if self.__T(Kind.Ident):
             name = self.__L()
             self.__match(Kind.Ident)
@@ -791,23 +792,21 @@ class Parser:
                         argus.append(exi)
                 self.__match(Kind.RPar)
                 return Apply(name, argus)
-            
+
             if self.__T(Kind.LBrack):
                 self.__match(Kind.LBrack)
                 inxe = self.parseAddition()
                 self.__match(Kind.RBrack)
                 return Variable(name, inxe)
-            
+
             return Variable(name)
 
-        #
         if self.__T(Kind.Sub, Kind.Not):
             oper = self.__L()
             self.__eat()
             suex = self.parseFactor()
             return Unary(oper, suex)
 
-        #
         if self.__T(Kind.LPar):
             self.__match(Kind.LPar)
             suex = self.parseDisjunction()
@@ -816,12 +815,12 @@ class Parser:
 
         return None
 
-   
-##
-## TEST
-##
+
+#
+#
+#
 if __name__ == '__main__':
-    parser = Parser('tests/case10.bas')
+    parser = Parser('tests/case12.bas')
     if parser.parse():
         try:
             Call('entry', []).execute({})
