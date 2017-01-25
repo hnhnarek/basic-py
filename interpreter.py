@@ -761,74 +761,15 @@ class Parser:
 
         return None
 
-
-##
-## Unit tests
-##
-#import unittest
-#
-#class TestExpression(unittest.TestCase):
-#    def testNumber(self):
-#        nm = Number(3.14)
-#        self.assertEqual(nm.value, 3.14)
-#
-#    def testVariable(self):
-#        v0 = Variable('pi')
-#        v1 = Variable('g')
-#        e0 = {'pi':3.14, 'g':9.81}
-#        r0 = v0.evaluate(e0)
-#        self.assertEqual(r0, 3.14)
-#        r1 = v1.evaluate(e0)
-#        self.assertEqual(r1, 9.81)
-#
-#    def testUnary(self):
-#        n0 = Number(2)
-#        u0 = Unary('-', n0)
-#        r0 = u0.evaluate({})
-#        self.assertEqual(r0, -2)
-#        
-#    def testBinary(self):
-#        n0 = Number(3.14)
-#        v0 = Variable('r')
-#
-#        b0 = Binary('+', n0, v0)
-#        r0 = b0.evaluate({'r':2})
-#        self.assertTrue(r0 - 5.14 < 0.00001)
-#        
-#        b0 = Binary('-', n0, v0)
-#        r0 = b0.evaluate({'r':2})
-#        self.assertTrue(r0 - 1.14 < 0.00001)
-#
-#        b0 = Binary('*', n0, v0)
-#        r0 = b0.evaluate({'r':2})
-#        self.assertEqual(r0, 6.28)
-#
-#        b0 = Binary('/', n0, v0)
-#        r0 = b0.evaluate({'r':2})
-#        self.assertEqual(r0, 1.57)
-#
-#    def testApply(self):
-#        pass
-#   
-
    
 ##
 ## TEST
 ##
 if __name__ == '__main__':
-<<<<<<< Updated upstream
-    parser = Parser('C:/Projects/basic-py/tests/case09.bas')
+    parser = Parser('tests/case09.bas')
     if parser.parse():
         try:
             Call('entry', []).execute({})
         except RuntimeError as er:
             print(er)
-=======
-    parser = Parser('case08.bas')
-    parser.parse()
-    main = Call('entry', [])
-    main.execute({})
->>>>>>> Stashed changes
-
-
 
