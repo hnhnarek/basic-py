@@ -458,7 +458,7 @@ class Parser:
     def parse(self):
         try:
             self.lookahead = next(self.scan)
-    
+
             while self.__T(Kind.Eol):
                 self.__eat()
 
@@ -816,12 +816,19 @@ class Parser:
 ## TEST
 ##
 if __name__ == '__main__':
+<<<<<<< Updated upstream
     parser = Parser('C:/Projects/basic-py/tests/case09.bas')
     if parser.parse():
         try:
             Call('entry', []).execute({})
         except RuntimeError as er:
             print(er)
+=======
+    parser = Parser('case08.bas')
+    parser.parse()
+    main = Call('entry', [])
+    main.execute({})
+>>>>>>> Stashed changes
 
 
 
