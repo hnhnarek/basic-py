@@ -46,10 +46,15 @@ class Text:
 # Փոփոխական
 #
 class Variable:
-    def __init__(self, nm):
+    def __init__(self, nm, ix = None):
         self.name = nm
+        self.index = ix
 
     def evaluate(self, env):
+        if self.index:
+            inx = self.index.evaluate(env)
+            return env[self.name][int(inx)-1]
+            
         return env[self.name]
 
 #
@@ -141,16 +146,33 @@ class Apply:
         return envext[self.calleename]
 
 #
+# Զանգվածի սահմանում
+#
+class Dim:
+    def __init__(self, nm, sz):
+        self.name = nm
+        self.size = sz
+
+    def execute(self, env):
+        sz = self.size.evaluate(env)
+        env[self.name] = [0 for i in range(int(sz))]
+
+#
 # Վերագրում
 #
 class Assign:
-    def __init__(self, nm, ex):
+    def __init__(self, nm, ix, ex):
         self.varname = nm
+        self.index = ix
         self.subexpr = ex
 
     def execute(self, env):
         e0 = self.subexpr.evaluate(env)
-        env[self.varname] = e0
+        if self.index:
+            ix = self.index.evaluate(env)
+            env[self.varname][int(ix)-1] = e0
+        else:
+            env[self.varname] = e0
 
 #
 # Արտածում
@@ -238,7 +260,7 @@ class Call:
         self.call.evaluate(env)
 
 #
-# 
+# Հրամանների հաջորդականություն
 #
 class Sequence:
     def __init__(self, sl):
@@ -277,8 +299,10 @@ class Kind(enum.Enum):
     # ծառայողական նիշեր
     LPar  = 36
     RPar  = 37
-    Comma = 38
-    Eol   = 39
+    LBrack = 38
+    RBrack = 39
+    Comma = 40
+    Eol   = 41
     # ծառայողական բառեր
     Function = 61
     End      = 62
@@ -294,6 +318,7 @@ class Kind(enum.Enum):
     To       = 72
     Step     = 73
     Call     = 74
+    Dim      = 75
 
 
 #
@@ -316,6 +341,7 @@ class Scanner:
         'TO'       : Kind.To,
         'STEP'     : Kind.Step,
         'CALL'     : Kind.Call,
+        'DIM'      : Kind.Dim,
         'AND'      : Kind.And,
         'OR'       : Kind.Or,
         'NOT'      : Kind.Not
@@ -338,6 +364,8 @@ class Scanner:
     symbols = {
         '('  : Kind.LPar,
         ')'  : Kind.RPar,
+        '['  : Kind.LBrack,
+        ']'  : Kind.RBrack,
         ','  : Kind.Comma,
         '\n' : Kind.Eol
     }
@@ -352,7 +380,9 @@ class Scanner:
         self.rxText = re.compile(r'"[^"]*"')
         self.rxIdent = re.compile(r'^[a-zA-Z][a-zA-Z0-9]*')
         self.rxMathOps = re.compile(r'^<>|<=|>=|=|>|<|\+|\-|\*|/|\^')
-        self.rxSymbols = re.compile(r'^[\n\(\),]')
+        self.rxSymbols = re.compile(r'^[\n\(\)\[\],]')
+
+        self.symtab = None
 
     #
     def __iter__(self):
@@ -495,6 +525,8 @@ class Parser:
 
     #
     def parseFunction(self):
+        self.symtab = dict()
+
         self.__match(Kind.Function)
         name = self.__L()
         self.__match(Kind.Ident)
@@ -520,7 +552,9 @@ class Parser:
     def parseStatements(self):
         stats = []
         while True:
-            if self.__T(Kind.Let) or self.__T(Kind.Ident):
+            if self.__T(Kind.Dim):
+                stats.append(self.parseDim())
+            elif self.__T(Kind.Let) or self.__T(Kind.Ident):
                 stats.append(self.parseAssign())
             elif self.__T(Kind.Print):
                 stats.append(self.parsePrint())
@@ -540,14 +574,29 @@ class Parser:
         return Sequence(stats)
 
     #
+    def parseDim(self):
+        self.__match(Kind.Dim)
+        name = self.__L()
+        self.__match(Kind.Ident)
+        self.__match(Kind.LBrack)
+        size = self.parseAddition()
+        self.__match(Kind.RBrack)
+        return Dim(name, size)
+
+    #
     def parseAssign(self):
         if self.__T(Kind.Let):
             self.__eat()
         name = self.__L()
         self.__match(Kind.Ident)
+        ixex = None
+        if self.__T(Kind.LBrack):
+            self.__match(Kind.LBrack)
+            ixex = self.parseAddition()
+            self.__match(Kind.RBrack)
         self.__match(Kind.Eq)
         expr = self.parseDisjunction()
-        return Assign(name, expr)
+        return Assign(name, ixex, expr)
 
     #
     def parsePrint(self):
@@ -601,7 +650,6 @@ class Parser:
 
     #
     def parseFor(self):
-        ''' Statement = FOR IDENT '=' E TO E [STEP [(+|-)]E] Eols Statements END FOR'''
         self.__match(Kind.For)
         param = self.__L()
         self.__match(Kind.Ident)
@@ -733,7 +781,8 @@ class Parser:
             if self.__T(Kind.LPar):
                 argus = []
                 self.__match(Kind.LPar)
-                if self.__T(Kind.Number, Kind.Ident, Kind.Sub, Kind.Not, Kind.LPar):
+                if self.__T(Kind.Number, Kind.Ident, 
+                            Kind.Sub, Kind.Not, Kind.LPar):
                     exi = self.parseDisjunction()
                     argus.append(exi)
                     while self.__T(Kind.Comma):
@@ -742,8 +791,14 @@ class Parser:
                         argus.append(exi)
                 self.__match(Kind.RPar)
                 return Apply(name, argus)
-            else:
-                return Variable(name)
+            
+            if self.__T(Kind.LBrack):
+                self.__match(Kind.LBrack)
+                inxe = self.parseAddition()
+                self.__match(Kind.RBrack)
+                return Variable(name, inxe)
+            
+            return Variable(name)
 
         #
         if self.__T(Kind.Sub, Kind.Not):
@@ -766,7 +821,7 @@ class Parser:
 ## TEST
 ##
 if __name__ == '__main__':
-    parser = Parser('tests/case09.bas')
+    parser = Parser('tests/case10.bas')
     if parser.parse():
         try:
             Call('entry', []).execute({})
