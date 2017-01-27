@@ -503,10 +503,6 @@ class Parser:
             while self.__T(Kind.Function):
                 subr = self.parseFunction()
                 subroutines[subr.name] = subr
-
-            stats = self.parseStatements()
-            entryf = Procedure('entry', [], stats)
-            subroutines['entry'] = entryf
         except SyntaxError as se:
             print(se)
             return False
@@ -823,7 +819,7 @@ if __name__ == '__main__':
     parser = Parser('tests/case12.bas')
     if parser.parse():
         try:
-            Call('entry', []).execute({})
+            Call('Main', []).execute({})
         except RuntimeError as er:
             print(er)
 

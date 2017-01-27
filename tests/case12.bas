@@ -20,7 +20,7 @@ END FUNCTION
 '
 '
 '
-FUNCTION M()
+FUNCTION Main()
   DIM w[5]
 
   w[1] = 6
@@ -33,4 +33,4 @@ FUNCTION M()
   PRINT w0
 END FUNCTION
 
-CALL M
+
