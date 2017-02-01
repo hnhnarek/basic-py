@@ -1,6 +1,6 @@
-FUNCTION ex1()
+
+FUNCTION Main()
   INPUT x
   PRINT x
 END FUNCTION
 
-CALL ex1

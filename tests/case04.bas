@@ -1,6 +1,6 @@
 
 
-FUNCTION ex2()
+FUNCTION Main()
   a = 3.14
   LET a = -777
 
@@ -15,5 +15,4 @@ FUNCTION ex2()
   PRINT e
 END FUNCTION
 
-CALL ex2
 

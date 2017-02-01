@@ -1,6 +1,6 @@
-FUNCTION ex0(a)
+
+FUNCTION Main(a)
   PRINT a
 END FUNCTION
 
-CALL ex0 5
 
