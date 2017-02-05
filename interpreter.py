@@ -299,12 +299,12 @@ class Kind(enum.Enum):
     Or  = 34
     Not = 35
     # ծառայողական նիշեր
-    LPar  = 36
-    RPar  = 37
+    LPar   = 36
+    RPar   = 37
     LBrack = 38
     RBrack = 39
-    Comma = 40
-    Eol   = 41
+    Comma  = 40
+    Eol    = 41
     # ծառայողական բառեր
     Function = 61
     End      = 62
@@ -328,7 +328,7 @@ class Kind(enum.Enum):
 #
 class Scanner:
     # ծառայողական բառեր
-    keywords = {
+    __keywords = {
         'FUNCTION' : Kind.Function,
         'END'      : Kind.End,
         'PRINT'    : Kind.Print,
@@ -349,7 +349,7 @@ class Scanner:
         'NOT'      : Kind.Not
     }
     # գործողություններ
-    operations = {
+    __operations = {
         '+'  : Kind.Add,
         '-'  : Kind.Sub,
         '*'  : Kind.Mul,
@@ -363,7 +363,7 @@ class Scanner:
         '<=' : Kind.Le
     }
     # մետասիմվոլներ
-    symbols = {
+    __symbols = {
         '('  : Kind.LPar,
         ')'  : Kind.RPar,
         '['  : Kind.LBrack,
@@ -417,7 +417,7 @@ class Scanner:
         meo = self.rxIdent.match(self.source)
         if meo:
             lexeme = self.cutLexeme(meo)
-            token = self.keywords.get(lexeme, Kind.Ident)
+            token = self.__keywords.get(lexeme, Kind.Ident)
             return (lexeme, token, self.line)
 
         # իրական թիվ
@@ -436,14 +436,14 @@ class Scanner:
         meo = self.rxMathOps.match(self.source)
         if meo:
             lexeme = self.cutLexeme(meo)
-            token = self.operations[lexeme]
+            token = self.__operations[lexeme]
             return (lexeme, token, self.line)
 
         # մետասիմվոլներ
         meo = self.rxSymbols.match(self.source)
         if meo:
             lexeme = self.cutLexeme(meo)
-            token = self.symbols[lexeme]
+            token = self.__symbols[lexeme]
             if '\n' == lexeme:
                 self.line += 1
             return (lexeme, token, self.line)
