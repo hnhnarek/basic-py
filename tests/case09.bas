@@ -29,8 +29,10 @@ END FUNCTION
 '
 '
 '
-CALL Quadratic 0, 0, 0
-CALL Quadratic 0, 0, 3
-CALL Quadratic 0, 2, 3
-CALL Quadratic -1, 2, 3
+FUNCTION Main()
+  CALL Quadratic 0, 0, 0
+  CALL Quadratic 0, 0, 3
+  CALL Quadratic 0, 2, 3
+  CALL Quadratic -1, 2, 3
+END FUNCTION
 

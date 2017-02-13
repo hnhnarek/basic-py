@@ -1,5 +1,5 @@
 
-FUNCTION a0()
+FUNCTION Main()
 
 	DIM x[5]
 
@@ -11,6 +11,3 @@ FUNCTION a0()
     END FOR
 
 END FUNCTION
-
-CALL a0 
-

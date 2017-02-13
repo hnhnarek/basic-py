@@ -778,7 +778,7 @@ class Parser:
             if self.__T(Kind.LPar):
                 argus = []
                 self.__match(Kind.LPar)
-                if self.__T(Kind.Number, Kind.Ident, 
+                if self.__T(Kind.Number, Kind.Ident,
                             Kind.Sub, Kind.Not, Kind.LPar):
                     exi = self.parseDisjunction()
                     argus.append(exi)

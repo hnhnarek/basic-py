@@ -7,4 +7,6 @@ FUNCTION fact(n)
   END IF
 END FUNCTION
 
-PRINT SQR(fact(6))
+FUNCTION Main()
+  PRINT SQR(fact(6))
+END FUNCTION

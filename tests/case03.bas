@@ -1,4 +1,5 @@
 
+
 FUNCTION Main()
   INPUT x
   PRINT x

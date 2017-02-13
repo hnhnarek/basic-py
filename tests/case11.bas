@@ -5,7 +5,7 @@ FUNCTION Pr(x, n)
   END FOR
 END FUNCTION
 
-FUNCTION M()
+FUNCTION Main()
   DIM w[5]
 
   FOR i = 1 TO 5
@@ -14,5 +14,3 @@ FUNCTION M()
 
   CALL Pr w, 5
 END FUNCTION
-
-CALL M
