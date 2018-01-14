@@ -16,7 +16,10 @@ subroutines = dict()
 #
 # Ֆունկցիա կամ պրոցեդուրա
 #
+
+
 class Procedure:
+
     def __init__(self, nm, prs, bo):
         self.name = nm
         self.parameters = prs
@@ -25,7 +28,10 @@ class Procedure:
 #
 # Հաստատուն
 #
+
+
 class Number:
+
     def __init__(self, vl):
         self.value = vl
 
@@ -35,7 +41,10 @@ class Number:
 #
 #
 #
+
+
 class Text:
+
     def __init__(self, bv):
         self.value = bv
 
@@ -45,8 +54,11 @@ class Text:
 #
 # Փոփոխական
 #
+
+
 class Variable:
-    def __init__(self, nm, ix = None):
+
+    def __init__(self, nm, ix=None):
         self.name = nm
         self.index = ix
 
@@ -54,13 +66,16 @@ class Variable:
         if self.index:
             inx = self.index.evaluate(env)
             return env[self.name][int(inx)-1]
-            
+
         return env[self.name]
 
 #
 # Ունար գործողություն
 #
+
+
 class Unary:
+
     def __init__(self, op, ex):
         self.operation = op
         self.subexpr = ex
@@ -74,23 +89,25 @@ class Unary:
 #
 # Բինար գործողություն
 #
+
+
 class Binary:
     __opdict = {
-        '+'   : operator.add,
-        '-'   : operator.sub,
-        '*'   : operator.mul,
-        '/'   : operator.truediv,
-        '^'   : operator.pow,
-        '='   : operator.eq,
-        '<>'  : operator.ne,
-        '>'   : operator.gt,
-        '>='  : operator.ge,
-        '<'   : operator.lt,
-        '<='  : operator.le,
-        'AND' : lambda a, b: a and b,
-        'OR'  : lambda a, b: a or b
+        '+': operator.add,
+        '-': operator.sub,
+        '*': operator.mul,
+        '/': operator.truediv,
+        '^': operator.pow,
+        '=': operator.eq,
+        '<>': operator.ne,
+        '>': operator.gt,
+        '>=': operator.ge,
+        '<': operator.lt,
+        '<=': operator.le,
+        'AND': lambda a, b: a and b,
+        'OR': lambda a, b: a or b
     }
-    
+
     def __init__(self, op, exo, exi):
         self.operation = op
         self.subexpro = exo
@@ -105,17 +122,22 @@ class Binary:
 #
 #
 #
+
+
 class RuntimeError:
+
     def __init__(self, mes):
         self.message = mes
 
 #
 # Ֆունկցիայի կանչ
 #
+
+
 class Apply:
     builtins = {
-        'SQR' : math.sqrt,
-        'LEN' : lambda e: len(e)
+        'SQR': math.sqrt,
+        'LEN': lambda e: len(e)
     }
 
     def __init__(self, cl, ags):
@@ -139,7 +161,7 @@ class Apply:
 
         envext = dict(env)
         envext[self.calleename] = 0
-        for k,v in zip(callee.parameters, self.arguments):
+        for k, v in zip(callee.parameters, self.arguments):
             envext[k] = v.evaluate(env)
 
         callee.body.execute(envext)
@@ -149,7 +171,10 @@ class Apply:
 #
 # Զանգվածի սահմանում
 #
+
+
 class Dim:
+
     def __init__(self, nm, sz):
         self.name = nm
         self.size = sz
@@ -161,7 +186,10 @@ class Dim:
 #
 # Վերագրում
 #
+
+
 class Assign:
+
     def __init__(self, nm, ix, ex):
         self.varname = nm
         self.index = ix
@@ -178,7 +206,10 @@ class Assign:
 #
 # Արտածում
 #
+
+
 class Print:
+
     def __init__(self, ex):
         self.subexpr = ex
 
@@ -189,7 +220,10 @@ class Print:
 #
 # Ներմուծում
 #
+
+
 class Input:
+
     def __init__(self, nm):
         self.varname = nm
 
@@ -200,7 +234,10 @@ class Input:
 #
 # Պայման կամ ճյուղավորում
 #
+
+
 class Branch:
+
     def __init__(self, co, de):
         self.condition = co
         self.decision = de
@@ -219,7 +256,10 @@ class Branch:
 #
 # Նախապայմանով ցիկլ
 #
+
+
 class WhileLoop:
+
     def __init__(self, co, bo):
         self.condition = co
         self.body = bo
@@ -231,7 +271,10 @@ class WhileLoop:
 #
 # Պարամետրով ցիկլ
 #
+
+
 class ForLoop:
+
     def __init__(self, pr, be, en, sp, bo):
         self.parameter = pr
         self.begin = be
@@ -244,7 +287,7 @@ class ForLoop:
         be = self.begin.evaluate(env)
         en = self.end.evaluate(env)
         sp = self.step.evaluate(env)
-        
+
         env[pr] = be
         while env[pr] <= en if sp > 0 else env[pr] >= en:
             self.body.execute(env)
@@ -254,7 +297,10 @@ class ForLoop:
 #
 # Պրոցեդուրայի կանչ
 #
+
+
 class Call:
+
     def __init__(self, cl, ags):
         self.call = Apply(cl, ags)
 
@@ -264,7 +310,10 @@ class Call:
 #
 # Հրամանների հաջորդականություն
 #
+
+
 class Sequence:
+
     def __init__(self, sl):
         self.items = sl
 
@@ -275,12 +324,14 @@ class Sequence:
 #
 # Թոքեններ
 #
+
+
 class Kind(enum.Enum):
-    Null   = 0
-    Eof    = 1
+    Null = 0
+    Eof = 1
     Number = 2
-    Text   = 3
-    Ident  = 4
+    Text = 3
+    Ident = 4
     # թվաբանություն
     Add = 20
     Sub = 21
@@ -296,31 +347,31 @@ class Kind(enum.Enum):
     Le = 30
     # տրամաբանական
     And = 33
-    Or  = 34
+    Or = 34
     Not = 35
     # ծառայողական նիշեր
-    LPar   = 36
-    RPar   = 37
+    LPar = 36
+    RPar = 37
     LBrack = 38
     RBrack = 39
-    Comma  = 40
-    Eol    = 41
+    Comma = 40
+    Eol = 41
     # ծառայողական բառեր
     Function = 61
-    End      = 62
-    Print    = 63
-    Input    = 64
-    Let      = 65
-    If       = 66
-    Then     = 67
-    ElseIf   = 68
-    Else     = 69
-    While    = 70
-    For      = 71
-    To       = 72
-    Step     = 73
-    Call     = 74
-    Dim      = 75
+    End = 62
+    Print = 63
+    Input = 64
+    Let = 65
+    If = 66
+    Then = 67
+    ElseIf = 68
+    Else = 69
+    While = 70
+    For = 71
+    To = 72
+    Step = 73
+    Call = 74
+    Dim = 75
 
 
 #
@@ -329,47 +380,47 @@ class Kind(enum.Enum):
 class Scanner:
     # ծառայողական բառեր
     __keywords = {
-        'FUNCTION' : Kind.Function,
-        'END'      : Kind.End,
-        'PRINT'    : Kind.Print,
-        'INPUT'    : Kind.Input,
-        'LET'      : Kind.Let,
-        'IF'       : Kind.If,
-        'THEN'     : Kind.Then,
-        'ELSEIF'   : Kind.ElseIf,
-        'ELSE'     : Kind.Else,
-        'WHILE'    : Kind.While,
-        'FOR'      : Kind.For,
-        'TO'       : Kind.To,
-        'STEP'     : Kind.Step,
-        'CALL'     : Kind.Call,
-        'DIM'      : Kind.Dim,
-        'AND'      : Kind.And,
-        'OR'       : Kind.Or,
-        'NOT'      : Kind.Not
+        'FUNCTION': Kind.Function,
+        'END': Kind.End,
+        'PRINT': Kind.Print,
+        'INPUT': Kind.Input,
+        'LET': Kind.Let,
+        'IF': Kind.If,
+        'THEN': Kind.Then,
+        'ELSEIF': Kind.ElseIf,
+        'ELSE': Kind.Else,
+        'WHILE': Kind.While,
+        'FOR': Kind.For,
+        'TO': Kind.To,
+        'STEP': Kind.Step,
+        'CALL': Kind.Call,
+        'DIM': Kind.Dim,
+        'AND': Kind.And,
+        'OR': Kind.Or,
+        'NOT': Kind.Not
     }
     # գործողություններ
     __operations = {
-        '+'  : Kind.Add,
-        '-'  : Kind.Sub,
-        '*'  : Kind.Mul,
-        '/'  : Kind.Div,
-        '^'  : Kind.Pow,
-        '='  : Kind.Eq,
-        '<>' : Kind.Ne,
-        '>'  : Kind.Gt,
-        '>=' : Kind.Ge,
-        '<'  : Kind.Lt,
-        '<=' : Kind.Le
+        '+': Kind.Add,
+        '-': Kind.Sub,
+        '*': Kind.Mul,
+        '/': Kind.Div,
+        '^': Kind.Pow,
+        '=': Kind.Eq,
+        '<>': Kind.Ne,
+        '>': Kind.Gt,
+        '>=': Kind.Ge,
+        '<': Kind.Lt,
+        '<=': Kind.Le
     }
     # մետասիմվոլներ
     __symbols = {
-        '('  : Kind.LPar,
-        ')'  : Kind.RPar,
-        '['  : Kind.LBrack,
-        ']'  : Kind.RBrack,
-        ','  : Kind.Comma,
-        '\n' : Kind.Eol
+        '(': Kind.LPar,
+        ')': Kind.RPar,
+        '[': Kind.LBrack,
+        ']': Kind.RBrack,
+        ',': Kind.Comma,
+        '\n': Kind.Eol
     }
 
     #
@@ -451,16 +502,18 @@ class Scanner:
         return None
 
 
-
 #
 # Շարահյուսական վերլուծություն
 #
 class SyntaxError(Exception):
+
     def __init__(self, mes):
         self.message = mes
 
 #
 #
+
+
 class Parser:
     '''
     Շարահյուսական վերլուծիչն իրականացված է ռեկուրսիվ վայրէջքի եղանակով։
@@ -481,11 +534,11 @@ class Parser:
             text = source.read()
         self.scan = Scanner(text)
 
-
     # լեքսեմ
     def __L(self):
         return self.lookahead[0]
     # թոքենի ստուգում
+
     def __T(self, *tokens):
         for tok in tokens:
             if tok == self.lookahead[1]:
@@ -512,6 +565,7 @@ class Parser:
     #
     def __eat(self):
         self.lookahead = next(self.scan)
+
     def __match(self, token):
         if self.__T(token):
             self.__eat()
@@ -822,4 +876,3 @@ if __name__ == '__main__':
             Call('Main', []).execute({})
         except RuntimeError as er:
             print(er)
-
