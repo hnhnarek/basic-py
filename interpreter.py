@@ -124,7 +124,7 @@ class Binary:
 #
 
 
-class RuntimeError:
+class RuntimeError(Exception):
 
     def __init__(self, mes):
         self.message = mes
