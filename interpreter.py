@@ -870,7 +870,8 @@ class Parser:
 #
 #
 if __name__ == '__main__':
-    parser = Parser('tests/case12.bas')
+    source_file = sys.argv[1]
+    parser = Parser(source_file)
     if parser.parse():
         try:
             Call('Main', []).execute({})
