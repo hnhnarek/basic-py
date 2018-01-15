@@ -147,6 +147,8 @@ class Apply:
     def evaluate(self, env):
         # builtins
         if self.calleename in self.builtins:
+            if len(self.arguments) !=1:
+                raise RuntimeError('[Error] : %s function has 1 argument, %d is given'% (self.calleename,len(self.arguments)))
             agv = self.arguments[0].evaluate(env)
             return self.builtins[self.calleename](agv)
 
