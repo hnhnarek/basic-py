@@ -1,0 +1,5 @@
+FUNCTION Main()
+  INPUT x
+  t = SQR(x,x)
+  PRINT t
+END FUNCTION
