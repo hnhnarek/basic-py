@@ -153,11 +153,11 @@ class Apply:
         # ստուգել caleename֊ի գոյությունը subroutines֊ում
         callee = subroutines.get(self.calleename)
         if not callee:
-            raise RuntimeError('')
+            raise RuntimeError('[ERROR] Cant find function with name ' + self.calleename)
 
         # ստուգել len(callee.parametrs) == len(self.arguments)
         if len(self.arguments) != len(callee.parameters):
-            raise RuntimeError('')
+            raise RuntimeError('[ERROR] Cant find function with specified name and arguments')
 
         envext = dict(env)
         envext[self.calleename] = 0
